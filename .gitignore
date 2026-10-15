@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# customer-submitted reviews waiting for approval (contains names/emails)
+/data/pending-reviews.json
+# customer orders (names, addresses, phone numbers)
+/data/orders.json
