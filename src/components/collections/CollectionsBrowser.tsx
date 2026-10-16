@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import PriceTag from "@/components/products/PriceTag";
+import WishlistButton from "@/components/account/WishlistButton";
 import { ArrowUpRight, ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WHATSAPP_NUMBER, type CollectionCategory, type CollectionProduct } from "@/data/collections";
@@ -132,7 +133,7 @@ function FilterPanel({
           <button
             type="button"
             onClick={onClear}
-            className="text-xs font-bold uppercase tracking-wider text-[#E08A50] hover:text-[#cf7b43] cursor-pointer"
+            className="text-sm text-stone-600 hover:text-stone-900 underline underline-offset-4 cursor-pointer"
           >
             Clear all
           </button>
@@ -149,7 +150,7 @@ function FilterPanel({
                     type="checkbox"
                     checked={categories.includes(row.id)}
                     onChange={() => onCategory(row.id)}
-                    className="w-4 h-4 accent-[#E08A50] cursor-pointer"
+                    className="w-4 h-4 accent-stone-900 cursor-pointer"
                   />
                   <span>{row.name}</span>
                 </span>
@@ -169,7 +170,7 @@ function FilterPanel({
                   type="checkbox"
                   checked={prices.includes(range.id)}
                   onChange={() => onPrice(range.id)}
-                  className="w-4 h-4 accent-[#E08A50] cursor-pointer"
+                  className="w-4 h-4 accent-stone-900 cursor-pointer"
                 />
                 <span>{range.label}</span>
               </label>
@@ -187,7 +188,7 @@ function FilterPanel({
                   type="checkbox"
                   checked={materials.includes(m)}
                   onChange={() => onMaterial(m)}
-                  className="w-4 h-4 accent-[#E08A50] cursor-pointer"
+                  className="w-4 h-4 accent-stone-900 cursor-pointer"
                 />
                 <span>{m}</span>
               </label>
@@ -329,7 +330,7 @@ export default function CollectionsBrowser({
                 <SlidersHorizontal className="w-4 h-4" />
                 Filters
                 {activeCount > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#E08A50] text-white text-[11px] flex items-center justify-center">
+                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#1A1A18] text-white text-[11px] flex items-center justify-center">
                     {activeCount}
                   </span>
                 )}
@@ -350,7 +351,7 @@ export default function CollectionsBrowser({
                     onClick={() => setSort(o.key)}
                     className={`shrink-0 px-3 py-1.5 text-sm cursor-pointer border-b-2 transition-colors ${
                       isActive
-                        ? "border-[#E08A50] text-[#E08A50] font-bold"
+                        ? "border-stone-900 text-stone-900"
                         : "border-transparent text-stone-600 hover:text-stone-900 font-medium"
                     }`}
                   >
@@ -390,7 +391,7 @@ export default function CollectionsBrowser({
                     transition={{ duration: 0.5, ease: EASE }}
                     className="group flex flex-col"
                   >
-                    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[#ECE8E1]">
+                    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-sm bg-[#ECE8E1]">
                       <div className={`absolute inset-0 ${product.zoomClass ?? ""}`}>
                         <Image
                           src={product.image}
@@ -409,6 +410,7 @@ export default function CollectionsBrowser({
                       <span className="absolute top-4 left-4 px-3.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 text-[10px] font-sans font-bold uppercase tracking-wider">
                         {product.badge}
                       </span>
+                      <WishlistButton productId={product.id} variant="overlay" className="absolute top-3 right-3" />
                       <a
                         href={enquiryHref(product)}
                         target="_blank"

@@ -2,7 +2,9 @@
 // what the customer sees and what they are charged always come from the same place.
 import "server-only";
 import { getProducts, findCoupon } from "@/lib/catalog";
-import { evaluateCoupon, type CouponResult } from "@/data/coupons";
+import { prisma } from "@/lib/prisma";
+import { evaluateCoupon, type Coupon, type CouponResult } from "@/data/coupons";
+import type { Prisma } from "@/generated/prisma/client";
 import { MAX_QTY_PER_LINE, priceLine } from "@/data/store";
 import type { CollectionProduct, ProductColor } from "@/data/collections";
 
@@ -53,7 +55,46 @@ export async function priceItems(items: unknown): Promise<{ lines: PricedLine[];
 
 export const subtotalOf = (lines: PricedLine[]) => lines.reduce((sum, l) => sum + l.unit * l.qty, 0);
 
-export async function priceCoupon(code: string, subtotal: number): Promise<CouponResult> {
+// Orders that count as having used a coupon: everything except cancelled orders and online
+// payments that were started but abandoned more than an hour ago
+const ABANDONED_AFTER_MS = 60 * 60 * 1000;
+
+export function couponUseFilter(code: string, email?: string): Prisma.OrderWhereInput {
+  return {
+    couponCode: code,
+    fulfillment: { not: "cancelled" },
+    NOT: { status: "awaiting_payment", createdAt: { lt: new Date(Date.now() - ABANDONED_AFTER_MS) } },
+    ...(email ? { customerEmail: { equals: email, mode: "insensitive" } } : {}),
+  };
+}
+
+// Usage limits, checked against past orders. `db` lets checkout run this inside its transaction.
+export async function checkCouponLimits(
+  coupon: Coupon,
+  email: string | undefined,
+  db: Pick<typeof prisma, "order"> = prisma,
+): Promise<string | null> {
+  if (coupon.maxUses) {
+    const used = await db.order.count({ where: couponUseFilter(coupon.code) });
+    if (used >= coupon.maxUses) return "This coupon has been fully used.";
+  }
+  if (coupon.maxUsesPerCustomer && email) {
+    const mine = await db.order.count({ where: couponUseFilter(coupon.code, email) });
+    if (mine >= coupon.maxUsesPerCustomer) {
+      return coupon.maxUsesPerCustomer === 1
+        ? "You have already used this coupon."
+        : `You have already used this coupon ${coupon.maxUsesPerCustomer} times.`;
+    }
+  }
+  return null;
+}
+
+// email: the signed-in customer's email; personal coupons and per-customer limits are checked
+// against it. Without it (signed out), those checks wait until checkout, where login is required.
+export async function priceCoupon(code: string, subtotal: number, email?: string): Promise<CouponResult> {
   if (!String(code ?? "").trim()) return { ok: false, error: "Enter a coupon code." };
-  return evaluateCoupon(await findCoupon(code), subtotal);
+  const result = evaluateCoupon(await findCoupon(code), subtotal, email);
+  if (!result.ok) return result;
+  const limit = await checkCouponLimits(result.coupon, email);
+  return limit ? { ok: false, error: limit } : result;
 }

@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { BadgeCheck, Star } from "lucide-react";
 import { getRatingSummary, type ProductReview } from "@/data/reviews";
 import WriteReviewButton from "./ReviewForm";
 
@@ -32,7 +32,7 @@ export default function ProductReviews({
           <WriteReviewButton
             productId={productId}
             productName={productName}
-            className="px-6 py-3 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium cursor-pointer transition-colors"
+            className="px-6 py-3 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium cursor-pointer transition-colors"
           >
             Write a review
           </WriteReviewButton>
@@ -85,7 +85,13 @@ export default function ProductReviews({
                   <h3 className="mt-3 text-base font-semibold text-stone-950">{review.title}</h3>
                   <p className="mt-2 text-stone-700 leading-relaxed">{review.text}</p>
                   <p className="mt-4 text-sm text-stone-500">
-                    <span className="text-stone-900 font-medium">{review.name}</span> &middot; {review.location}
+                    <span className="text-stone-900 font-medium">{review.name}</span>
+                    {review.location && <> &middot; {review.location}</>}
+                    {review.verified && (
+                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                        <BadgeCheck className="w-3.5 h-3.5" /> Verified buyer
+                      </span>
+                    )}
                   </p>
                 </li>
               ))}

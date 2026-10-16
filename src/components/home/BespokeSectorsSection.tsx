@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { ArrowUpRight, MessageCircle } from "lucide-react";
+import { WHATSAPP_NUMBER } from "@/data/collections";
 import { motion, AnimatePresence } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
@@ -20,67 +21,67 @@ interface SectorProject {
 const sectors: SectorProject[] = [
   {
     id: "residential",
-    category: "Luxury Homes & Villas",
-    title: "Private Residences & Penthouses",
-    subtitle: "Custom Living, Dining & Master Suites",
+    category: "Homes",
+    title: "Homes",
+    subtitle: "Living rooms, dining rooms and bedrooms",
     description:
-      "From bespoke monolithic dining tables fitted to your floor plan dimensions to custom low-profile platform beds and modular sofas tailored in custom bouclé.",
+      "Dining tables cut to the length of your room, low beds, and modular sofas in the fabric you choose.",
     scope: [
-      "Custom Dimension Sizing",
-      "Living & Dining Suites",
-      "Master Bedsteads",
-      "Fluted Storage Credenzas",
+      "Made to your measurements",
+      "Living and dining sets",
+      "Beds",
+      "Sideboards and storage",
     ],
     image: "/hero/curated-living-space.jpg",
-    ctaText: "Discuss Home Project",
+    ctaText: "Tell us about your home",
   },
   {
     id: "hospitality",
-    category: "Hotels & Fine Dining",
-    title: "Boutique Hotels & Restaurants",
-    subtitle: "High-Traffic Luxury Hospitality Fit-Outs",
+    category: "Hotels & restaurants",
+    title: "Hotels and restaurants",
+    subtitle: "Furniture that takes daily wear",
     description:
-      "Heavy-duty architectural stone tables, flame-honed slate bar surfaces, and commercial rub-count seating engineered for enduring hospitality elegance.",
+      "Slate tables and bar tops that shrug off heat and spills, and seating upholstered for commercial use.",
     scope: [
-      "Scratch & Heat-Proof Slate",
-      "Lounge & Bar Seating",
-      "Suite Room Furniture",
-      "Custom Reception Desks",
+      "Heat- and scratch-resistant slate",
+      "Lounge and bar seating",
+      "Guest room furniture",
+      "Reception desks",
     ],
     image: "/hero/dining-table.jpg",
-    ctaText: "Inquire Hospitality Fit-Out",
+    ctaText: "Ask about a hotel project",
   },
   {
     id: "institutional",
-    category: "Schools & Colleges",
-    title: "Educational & Campus Spaces",
-    subtitle: "Architectural Libraries, Auditoriums & Faculty Lounges",
+    category: "Schools & colleges",
+    title: "Schools and colleges",
+    subtitle: "Libraries, staff rooms and offices",
     description:
-      "Durable, seasoned natural hardwoods and solid timber tables engineered for high-capacity university libraries, executive boardrooms, and modern student hubs.",
+      "Solid teak tables and desks for libraries, staff rooms and offices, built to be used every day for years.",
     scope: [
-      "Heavy-Duty Solid Teak",
-      "Conference & Library Tables",
-      "Faculty Executive Desks",
-      "Modular Acoustic Seating",
+      "Solid teak",
+      "Library and meeting tables",
+      "Desks",
+      "Seating",
     ],
     image: "/hero/custom-atelier.jpg",
-    ctaText: "Campus & Institutional Query",
+    ctaText: "Ask about a campus project",
   },
   {
     id: "corporate",
-    category: "Offices & Studios",
-    title: "Corporate & Architect Ateliers",
-    subtitle: "Executive Boardrooms & Workspace Centers",
+    category: "Offices",
+    title: "Offices and studios",
+    subtitle: "Meeting rooms and workspaces",
     description:
-      "Monolithic stone conference tables with concealed cable channels, executive desks, and quiet-luxury lounge suites for modern Indian workplaces.",
+      "Stone meeting tables with hidden cable channels, desks, and lounge seating for reception areas.",
     scope: [
-      "Concealed Wire Troughs",
-      "Custom 20-Seater Tables",
-      "Acoustic Wall Paneling",
-      "Private Pod Furniture",
+      "Hidden cable channels",
+      "Tables for up to 20",
+      "Wall panelling",
+      "Lounge seating",
     ],
     image: "/hero/cad-blueprint.jpg",
-    ctaText: "Corporate Project Inquire",
+    ctaText: "Ask about an office project",
   },
 ];
 
@@ -102,29 +103,24 @@ export default function BespokeSectorsSection() {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="max-w-3xl mb-10 sm:mb-12"
         >
-          <span className="text-[11px] sm:text-xs uppercase tracking-[0.22em] text-stone-600 font-bold block mb-1.5 font-sans">
-            Custom Architectural Fit-Outs
-          </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-sans font-bold text-[#111110] tracking-tight">
-            <TextReveal text="Bespoke Furniture For Every Space" />
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-normal text-[#111110] tracking-tight">
+            <TextReveal text="Made for homes, hotels and offices" />
           </h2>
-          <p className="text-xs sm:text-sm text-stone-500 font-sans font-normal leading-relaxed mt-3 max-w-2xl">
-            Whether furnishing a private luxury residence, high-traffic boutique hotel, or educational campus, our master atelier customizes materials and dimensions to your architectural blueprint.
+          <p className="text-sm sm:text-base text-stone-600 font-sans font-normal leading-relaxed mt-3 max-w-2xl">
+            Tell us the room and its measurements. We make the pieces to fit, in the materials you choose.
           </p>
         </motion.div>
 
         {/* Sector Filter Tabs */}
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-4 mb-8 sm:mb-10 scrollbar-none">
+        <div className="flex items-center gap-6 overflow-x-auto mb-8 sm:mb-10 scrollbar-none border-b border-stone-200">
           {sectors.map((sec) => {
             const isActive = sec.id === current.id;
             return (
               <button
                 key={sec.id}
                 onClick={() => setActiveSectorId(sec.id)}
-                className={`px-5 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-sans font-bold tracking-wide transition-all cursor-pointer shrink-0 ${
-                  isActive
-                    ? "bg-stone-900 text-white shadow-md"
-                    : "bg-white hover:bg-stone-100 text-stone-600 border border-stone-200/90"
+                className={`-mb-px pb-3 text-sm transition-colors cursor-pointer shrink-0 border-b ${
+                  isActive ? "border-stone-900 text-stone-900" : "border-transparent text-stone-500 hover:text-stone-900"
                 }`}
               >
                 {sec.category}
@@ -139,16 +135,16 @@ export default function BespokeSectorsSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 bg-white rounded-3xl p-6 sm:p-10 lg:p-12 border border-stone-200/80 shadow-sm items-center"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center"
         >
           
           {/* Left Column: Details & Capabilities */}
           <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
             <div>
-              <span className="text-xs font-sans font-bold uppercase tracking-widest text-[#E08A50] block mb-2">
+              <span className="text-sm text-stone-500 block mb-2">
                 {current.subtitle}
               </span>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-sans font-bold text-stone-900 tracking-tight leading-snug">
+              <h3 className="font-serif text-3xl sm:text-4xl font-normal text-stone-900 tracking-tight leading-snug">
                 {current.title}
               </h3>
               <p className="text-sm sm:text-base text-stone-600 font-sans font-normal mt-4 leading-relaxed">
@@ -158,16 +154,13 @@ export default function BespokeSectorsSection() {
 
             {/* Scope Bullet Points */}
             <div className="pt-2">
-              <span className="text-xs uppercase font-sans font-bold tracking-wider text-stone-400 block mb-3">
-                Atelier Customization Scope:
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <span className="text-sm text-stone-500 block mb-2">What we make</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 border-t border-stone-200">
                 {current.scope.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 text-xs sm:text-sm font-sans font-medium text-stone-800 bg-stone-50 px-3.5 py-2 rounded-xl border border-stone-200/60"
+                    className="text-sm text-stone-800 py-2.5 border-b border-stone-200"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#E08A50] shrink-0" />
                     <span>{item}</span>
                   </div>
                 ))}
@@ -177,18 +170,18 @@ export default function BespokeSectorsSection() {
             {/* Action CTA */}
             <div className="pt-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
               <a
-                href="https://wa.me/919999999999"
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hello Averto, I would like furniture made for a project. Here is my floor plan.")}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-xs sm:text-sm font-sans font-bold tracking-wide whitespace-nowrap transition-all shadow-md hover:scale-105 active:scale-95"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm whitespace-nowrap transition-colors"
               >
-                <MessageCircle className="w-4 h-4 fill-white" />
-                <span>Share Floor Plan on WhatsApp</span>
+                <MessageCircle className="w-4 h-4" />
+                <span>Send your floor plan on WhatsApp</span>
               </a>
 
               <a
                 href="#contact"
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-900 text-xs sm:text-sm font-sans font-bold tracking-wide whitespace-nowrap transition-all"
+                className="inline-flex items-center justify-center gap-1.5 px-2 py-3.5 text-sm text-stone-900 underline underline-offset-4 decoration-stone-300 hover:decoration-stone-900 whitespace-nowrap"
               >
                 <span>{current.ctaText}</span>
                 <ArrowUpRight className="w-4 h-4" />
@@ -197,7 +190,7 @@ export default function BespokeSectorsSection() {
           </div>
 
           {/* Right Column: Architectural Photography Frame */}
-          <div className="lg:col-span-6 relative aspect-[16/11] sm:aspect-[16/10] w-full rounded-2xl overflow-hidden bg-stone-950 shadow-lg border border-stone-200">
+          <div className="lg:col-span-6 relative aspect-[16/11] sm:aspect-[16/10] w-full rounded-sm overflow-hidden bg-stone-200">
             <Image
               src={current.image}
               alt={current.title}
@@ -205,15 +198,6 @@ export default function BespokeSectorsSection() {
               className="object-cover object-center transition-transform duration-1000 hover:scale-105"
               sizes="(max-width: 1024px) 100vw, 50vw"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute bottom-5 left-5 right-5 text-white">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-[#E08A50] bg-black/60 backdrop-blur-md px-3 py-1 rounded-md border border-white/10 inline-block mb-1.5">
-                {current.category}
-              </span>
-              <h4 className="text-lg sm:text-xl font-sans font-bold text-white leading-tight">
-                {current.title}
-              </h4>
-            </div>
           </div>
 
         </motion.div>

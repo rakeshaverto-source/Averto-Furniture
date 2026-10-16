@@ -22,34 +22,34 @@ const heroSlides: HeroSlide[] = [
   {
     id: "warm-living",
     badge: "2026 ARCHITECTURAL LIVING",
-    titleLine1: "Design Your",
-    titleLine2: "Dream Living",
-    subtitle: "Curated organic luxury furniture handcrafted with natural Rajasthan slate and solid seasoned teakwood.",
+    titleLine1: "Furniture made",
+    titleLine2: "for the way you live",
+    subtitle: "Rajasthan slate and seasoned teak, made by hand to the size of your room.",
     image: "/hero/warm-living-hero.jpg",
     objectPos: "object-[center_right] sm:object-center",
-    ctaText: "Explore Collections",
+    ctaText: "Browse the collection",
     ctaHref: "/collections",
   },
   {
     id: "curated-villa",
     badge: "BESPOKE VILLA SUITE",
-    titleLine1: "Crafted For",
-    titleLine2: "Serene Interiors",
-    subtitle: "Custom curved bouclé sofas, chiseled stone centerpieces, and tailored architectural lighting.",
+    titleLine1: "Made to order,",
+    titleLine2: "made to last",
+    subtitle: "Curved bouclé sofas, stone-topped tables and lighting, each one built after you order it.",
     image: "/hero/curated-living-space.jpg",
     objectPos: "object-right sm:object-center",
-    ctaText: "View Bespoke Works",
+    ctaText: "See made-to-order work",
     ctaHref: "#bespoke",
   },
   {
     id: "minimal-lounge",
     badge: "MINIMALIST LIVING SUITE",
-    titleLine1: "Effortless",
-    titleLine2: "Spatial Luxury",
-    subtitle: "Minimal silhouette sectional lounges, warm timber textures, and natural daylight ambiance.",
+    titleLine1: "Quiet rooms,",
+    titleLine2: "warm materials",
+    subtitle: "Low sofas, warm timber and soft light. Pieces that let a room breathe.",
     image: "/hero/living-hero.jpg",
     objectPos: "object-center",
-    ctaText: "Discover Living",
+    ctaText: "Shop sofas & seating",
     ctaHref: "#seating",
   },
 ];
@@ -141,7 +141,7 @@ export default function HeroBanner() {
         <div className="max-w-xl">
           <h1
             key={slide.id}
-            className="text-4xl sm:text-5xl lg:text-6xl font-sans text-[#1C1B19] leading-[1.1] tracking-tight font-extrabold"
+            className="font-serif text-5xl sm:text-6xl lg:text-7xl text-[#1C1B19] leading-[1.02] tracking-tight font-normal"
           >
             <TextReveal text={slide.titleLine1} className="block" trigger="mount" />
             <TextReveal
@@ -165,23 +165,23 @@ export default function HeroBanner() {
           <div className="mt-8 flex items-center gap-4">
             <a
               href={slide.ctaHref}
-              className="inline-block px-8 py-3.5 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium transition-all shadow-md shadow-[#E08A50]/25 hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-block px-8 py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium transition-colors"
             >
               <span>{slide.ctaText}</span>
             </a>
 
             <a
               href="#contact"
-              className="inline-block px-6 py-3.5 rounded-xl border border-stone-300 hover:border-stone-400 bg-white/80 hover:bg-white text-stone-800 text-sm font-medium transition-colors"
+              className="inline-block px-6 py-3.5 rounded-sm border border-stone-300 hover:border-stone-400 bg-white/80 hover:bg-white text-stone-800 text-sm font-medium transition-colors"
             >
-              Consult Studio
+              Talk to us
             </a>
           </div>
         </div>
       </motion.div>
 
       {/* Slider Controls (Bottom Right) */}
-      <div className="absolute bottom-10 right-6 sm:right-16 z-20 flex items-center gap-4 bg-white/80 backdrop-blur-md px-4 py-2.5 rounded-full border border-stone-200/80 shadow-sm">
+      <div className="absolute bottom-10 right-6 sm:right-16 z-20 flex items-center gap-4 px-1 py-2.5">
         {/* Indicators */}
         <div className="flex items-center gap-2">
 {heroSlides.map((s, idx) => (   
@@ -190,7 +190,7 @@ export default function HeroBanner() {
               onClick={() => setCurrent(idx)}
               aria-label={`Go to slide ${idx + 1}`}
               className={`h-2 rounded-full transition-all duration-300 ${
-                current === idx ? "w-7 bg-[#E08A50]" : "w-2 bg-stone-300 hover:bg-stone-400"
+                current === idx ? "w-7 bg-[#1A1A18]" : "w-2 bg-stone-300 hover:bg-stone-400"
               }`}
             />
           ))}
@@ -219,3 +219,24 @@ export default function HeroBanner() {
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// averto-store@  

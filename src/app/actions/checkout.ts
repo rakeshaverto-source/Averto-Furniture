@@ -1,9 +1,13 @@
 "use server";
 
-import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { randomBytes } from "crypto";
 import { DEPOSIT_PERCENT, depositFor } from "@/data/store";
 import { prisma } from "@/lib/prisma";
 import { MAX_CART_LINES, priceCoupon, priceItems, subtotalOf } from "@/lib/pricing";
+import { CouponLimitReached, rememberAddress, saveOrder } from "@/lib/orders";
+import { createRazorpayOrder, isGenuinePayment, razorpayKeys } from "@/lib/razorpay";
+import { getCustomer } from "@/lib/customer-auth";
+import type { Coupon } from "@/data/coupons";
 
 export interface CheckoutItem {
   productId: string;
@@ -68,6 +72,10 @@ export async function createOrder(
   customerInput: CheckoutCustomer,
   couponInput?: string,
 ): Promise<CreateOrderResult> {
+  // Ordering needs an account; the email always comes from it, never from the form
+  const account = await getCustomer();
+  if (!account) return { ok: false, error: "Please log in again to place your order." };
+
   // This can be called directly with a POST, so the cart and the amount are rebuilt here from our own
   // price list; nothing the browser sends about prices is trusted.
   if (!Array.isArray(items) || items.length === 0 || items.length > MAX_CART_LINES) {
@@ -84,7 +92,7 @@ export async function createOrder(
     return { ok: false, error: "Something in your cart is no longer available. Please review it and try again." };
   }
 
-  const { customer, errors } = validateCustomer(customerInput);
+  const { customer, errors } = validateCustomer({ ...customerInput, email: account.email });
   if (Object.keys(errors).length > 0) {
     return { ok: false, error: "Please check the highlighted details.", fieldErrors: errors };
   }
@@ -94,17 +102,20 @@ export async function createOrder(
   // The coupon is checked again here against the database and the rebuilt subtotal
   let discount = 0;
   let couponCode: string | undefined;
+  let appliedCoupon: Coupon | undefined;
   if (couponInput) {
-    const result = await priceCoupon(String(couponInput), subtotal);
+    const result = await priceCoupon(String(couponInput), subtotal, account.email);
     if (!result.ok) return { ok: false, error: `Your coupon could not be applied. ${result.error}` };
     discount = result.discount;
     couponCode = result.coupon.code;
+    appliedCoupon = result.coupon;
   }
   const total = subtotal - discount;
   const deposit = depositFor(total);
   const ref = `AV-${randomBytes(5).toString("hex").toUpperCase()}`;
   const order = {
     ref,
+    userId: account.id,
     customerName: customer.name,
     customerPhone: customer.phone,
     customerEmail: customer.email,
@@ -132,35 +143,31 @@ export async function createOrder(
     },
   };
 
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keys = razorpayKeys();
 
   try {
-    if (!keyId || !keySecret) {
+    // Saves typing for next time: remember this address if it isn't saved yet
+    // (never blocks the order if it fails)
+    await rememberAddress(account.id, customer).catch(() => {});
+
+    if (!keys) {
       // No payment gateway set up yet: keep the order so the team can contact the customer
-      await prisma.order.create({ data: { ...order, status: "received" } });
+      await saveOrder({ ...order, status: "received" }, appliedCoupon, account.email);
       return { ok: true, mode: "manual", ref, total, deposit };
     }
 
-    const response = await fetch("https://api.razorpay.com/v1/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`,
-      },
-      body: JSON.stringify({ amount: deposit * 100, currency: "INR", receipt: ref, notes: { ref } }),
-    });
-    if (!response.ok) {
+    const razorpayOrderId = await createRazorpayOrder(deposit, ref);
+    if (!razorpayOrderId) {
       return { ok: false, error: "We could not start the payment. Please try again in a moment." };
     }
-    const razorpayOrder = (await response.json()) as { id?: string };
-    if (!razorpayOrder.id) {
-      return { ok: false, error: "We could not start the payment. Please try again in a moment." };
-    }
+    const razorpayOrder = { id: razorpayOrderId };
+    const keyId = keys.keyId;
 
-    await prisma.order.create({
-      data: { ...order, status: "awaiting_payment", razorpayOrderId: razorpayOrder.id },
-    });
+    await saveOrder(
+      { ...order, status: "awaiting_payment", razorpayOrderId: razorpayOrder.id },
+      appliedCoupon,
+      account.email,
+    );
     return {
       ok: true,
       mode: "razorpay",
@@ -171,7 +178,10 @@ export async function createOrder(
       razorpayOrderId: razorpayOrder.id,
       amountPaise: deposit * 100,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof CouponLimitReached) {
+      return { ok: false, error: `Your coupon could not be applied. ${error.message}` };
+    }
     return { ok: false, error: "We could not place your order right now. Please try again or contact us." };
   }
 }
@@ -182,8 +192,7 @@ export async function confirmPayment(input: {
   razorpay_payment_id: string;
   razorpay_signature: string;
 }): Promise<ConfirmPaymentResult> {
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  if (!keySecret) return { ok: false, error: "Payments are not configured." };
+  if (!razorpayKeys()) return { ok: false, error: "Payments are not configured." };
 
   try {
     const order = await prisma.order.findUnique({ where: { ref: String(input?.ref ?? "") } });
@@ -192,13 +201,11 @@ export async function confirmPayment(input: {
     }
     if (order.status === "deposit_paid") return { ok: true, ref: order.ref };
 
-    // Razorpay signs "order_id|payment_id" with our secret; anything else is not a real payment
-    const expected = createHmac("sha256", keySecret)
-      .update(`${order.razorpayOrderId}|${String(input.razorpay_payment_id)}`)
-      .digest("hex");
-    const given = String(input.razorpay_signature);
-    const valid =
-      given.length === expected.length && timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+    const valid = isGenuinePayment(
+      order.razorpayOrderId,
+      String(input.razorpay_payment_id),
+      String(input.razorpay_signature),
+    );
     if (!valid) return { ok: false, error: "We could not verify this payment." };
 
     // Only an order still waiting for payment moves on, so a repeated confirmation changes nothing

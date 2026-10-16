@@ -72,7 +72,7 @@ export default function CartDrawer() {
                 <Link
                   href="/collections"
                   onClick={closeDrawer}
-                  className="mt-6 px-7 py-3 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium transition-colors"
+                  className="mt-6 px-7 py-3 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium transition-colors"
                 >
                   View collections
                 </Link>
@@ -180,7 +180,7 @@ export default function CartDrawer() {
                   <Link
                     href="/checkout"
                     onClick={closeDrawer}
-                    className="mt-4 flex items-center justify-center w-full py-3.5 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium transition-colors"
+                    className="mt-4 flex items-center justify-center w-full py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium transition-colors"
                   >
                     Checkout
                   </Link>

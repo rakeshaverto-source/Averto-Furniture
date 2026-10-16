@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import PriceTag from "@/components/products/PriceTag";
-import { ArrowUpRight, ShoppingBag, Eye, Heart } from "lucide-react";
+import WishlistButton from "@/components/account/WishlistButton";
 import { motion } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
@@ -112,26 +112,24 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
           className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-10"
         >
           <div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-bold tracking-tight text-[#111110]">
-              <TextReveal text="Top Selling Products" />
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-normal tracking-tight text-[#111110]">
+              <TextReveal text="Selected pieces" />
             </h2>
             <p className="text-sm sm:text-base text-stone-500 font-sans font-normal mt-3 max-w-lg">
-              Most requested architectural commissions across our ateliers in New Delhi, Mumbai, and Bengaluru.
+              A few of the pieces we make most often, each one built to order.
             </p>
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex items-center gap-5 overflow-x-auto pb-2 scrollbar-none">
             {filterCategories.map((cat) => {
               const isActive = activeFilter === cat;
               return (
                 <button
                   key={cat}
                   onClick={() => setActiveFilter(cat)}
-                  className={`px-5 py-2 rounded-full text-xs font-sans font-semibold tracking-wide transition-all cursor-pointer shrink-0 ${
-                    isActive
-                      ? "bg-stone-900 text-white shadow-sm"
-                      : "bg-stone-100 hover:bg-stone-200/80 text-stone-600"
+                  className={`pb-1 text-sm transition-colors cursor-pointer shrink-0 border-b ${
+                    isActive ? "border-stone-900 text-stone-900" : "border-transparent text-stone-500 hover:text-stone-900"
                   }`}
                 >
                   {cat}
@@ -154,7 +152,7 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
                 delay: (idx % 3) * 0.12,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="group flex flex-col bg-[#FAF8F5] rounded-3xl overflow-hidden border border-stone-200/70 hover:border-stone-400 transition-all duration-500 hover:shadow-xl hover:-translate-y-1.5"
+              className="group flex flex-col"
             >
               {/* Product Image Frame */}
               <div className="relative aspect-[4/3.5] w-full overflow-hidden bg-stone-100">
@@ -166,32 +164,23 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 />
                 
-                {/* Floating Tag */}
-                <div className="absolute top-4 left-4 z-10 pointer-events-none">
-                  <span className="px-3.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 text-[10px] font-sans font-bold uppercase tracking-wider shadow-sm border border-stone-200/60">
-                    {product.tag}
-                  </span>
-                </div>
 
                 {/* Quick Action Overlay (On Hover) */}
                 <Link
                   href={`/products/${product.slug}`}
                   aria-label={`View ${product.name}`}
-                  className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3"
-                >
-                  <span className="w-11 h-11 rounded-full bg-white text-stone-900 flex items-center justify-center shadow-lg transition-transform transform translate-y-3 group-hover:translate-y-0">
-                    <ArrowUpRight className="w-5 h-5" />
-                  </span>
-                </Link>
+                  className="absolute inset-0"
+                />
+                <WishlistButton productId={product.slug} variant="overlay" className="absolute top-3 right-3" />
               </div>
 
               {/* Product Info */}
-              <div className="p-6 sm:p-7 flex flex-col flex-1 justify-between">
+              <div className="pt-5 flex flex-col flex-1 justify-between">
                 <div>
-                  <span className="text-[11px] uppercase tracking-wider text-stone-400 font-sans font-semibold block mb-1">
+                  <span className="text-xs text-stone-500 block mb-1">
                     {product.category}
                   </span>
-                  <h3 className="text-xl font-sans font-bold text-stone-900 leading-snug group-hover:text-stone-700 transition-colors">
+                  <h3 className="font-serif text-2xl font-normal text-stone-900 leading-snug">
                     <Link href={`/products/${product.slug}`} className="hover:underline underline-offset-4">
                       {product.name}
                     </Link>
@@ -202,7 +191,7 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
                 </div>
 
                 {/* Price and CTA */}
-                <div className="mt-6 pt-4 border-t border-stone-200/80 flex items-center justify-between">
+                <div className="mt-4 flex items-center justify-between">
                   <PriceTag
                     price={prices[product.slug]?.priceInr ?? 0}
                     original={prices[product.slug]?.originalPriceInr}
@@ -210,10 +199,9 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
 
                   <Link
                     href={`/products/${product.slug}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-sans font-semibold tracking-wide transition-all shadow-sm"
+                    className="text-sm text-stone-900 underline underline-offset-4 decoration-stone-300 hover:decoration-stone-900"
                   >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>View</span>
+                    View piece
                   </Link>
                 </div>
               </div>

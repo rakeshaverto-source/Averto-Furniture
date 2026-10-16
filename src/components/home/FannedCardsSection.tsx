@@ -4,12 +4,14 @@ import React, { useState, useRef } from "react";
 import Image from "next/image";
 import { Star, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import TextReveal from "@/components/motion/TextReveal";
+import WishlistButton from "@/components/account/WishlistButton";
 
 const posterCards = [
   {
     id: "card-1",
     rating: "9.8",
     badge: "BESPOKE",
+    productId: "monolith-slate-table",
     title: "The Monolith Slate Table",
     specs: "20mm Flame Slate · Fluted Oak",
     category: "Dining Centerpiece",
@@ -20,6 +22,7 @@ const posterCards = [
     id: "card-2",
     rating: "9.5",
     badge: "SIGNATURE",
+    productId: "sculptural-boucle-chair",
     title: "Sculptural Bouclé Chair",
     specs: "Ligurian Slate Inlays · American Oak",
     category: "Bespoke Seating",
@@ -30,6 +33,7 @@ const posterCards = [
     id: "card-3",
     rating: "9.9",
     badge: "ARCHITECTURAL",
+    productId: "aura-low-profile-bed",
     title: "Aura Low-Profile Bed",
     specs: "Backlit Slate Slab · Smoked Ash",
     category: "Sanctuary Series",
@@ -40,6 +44,7 @@ const posterCards = [
     id: "card-4",
     rating: "9.7",
     badge: "NEW ARRIVAL",
+    productId: "serpentine-modular-sofa",
     title: "Serpentine Modular Sofa",
     specs: "Textured Cream Bouclé · Slate Plinth",
     category: "Living Pavilion",
@@ -50,6 +55,7 @@ const posterCards = [
     id: "card-5",
     rating: "9.4",
     badge: "CRAFTED",
+    productId: "nero-marquina-credenza",
     title: "Nero Marquina Credenza",
     specs: "Smoked Oak · Honed Black Marble Slab",
     category: "Editorial Storage",
@@ -60,6 +66,7 @@ const posterCards = [
     id: "card-6",
     rating: "9.9",
     badge: "ILLUMINATION",
+    productId: "solstice-chandelier",
     title: "Solstice Geometric Chandelier",
     specs: "Brushed Brass · Frosted Alabaster Glass",
     category: "Architectural Lighting",
@@ -70,6 +77,7 @@ const posterCards = [
     id: "card-7",
     rating: "9.3",
     badge: "BESPOKE",
+    productId: "solstice-wall-console",
     title: "Solstice Wall Console",
     specs: "Raw Slate Cut · Brushed Champagne Brass",
     category: "Foyer & Gallery",
@@ -80,6 +88,7 @@ const posterCards = [
     id: "card-8",
     rating: "9.6",
     badge: "HANDCRAFTED",
+    productId: "saddle-leather-lounge-chair",
     title: "Saddle Leather Lounge Chair",
     specs: "Full-Grain Caramel Leather · Solid Walnut",
     category: "Contemplation Chair",
@@ -90,6 +99,7 @@ const posterCards = [
     id: "card-9",
     rating: "9.1",
     badge: "LIMITED",
+    productId: "round-slate-coffee-table",
     title: "Round Slate Coffee Table",
     specs: "Chiseled Natural Rim · Solid White Oak",
     category: "Living Core",
@@ -100,6 +110,7 @@ const posterCards = [
     id: "card-10",
     rating: "9.4",
     badge: "ARCHITECTURAL",
+    productId: "cantilevered-travertine-desk",
     title: "Cantilevered Travertine Desk",
     specs: "Honed Roman Travertine · Matte Slate Legs",
     category: "Executive Atelier",
@@ -351,6 +362,14 @@ export default function FannedCardsSection() {
                     {card.badge}
                   </span>
                 </div>
+                {/* Saving a piece should not also spin the fan */}
+                <span
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  className="absolute z-10 top-12 right-4"
+                >
+                  <WishlistButton productId={card.productId} variant="overlay" />
+                </span>
 
                 {/* Bottom Poster Content */}
                 <div className="absolute bottom-0 left-0 right-0 p-5 z-10 text-white">

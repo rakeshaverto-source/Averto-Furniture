@@ -1,6 +1,7 @@
 // Copies the sample catalogue in prisma/sample-data/ into the database. Safe to run again: it clears the
 // catalogue, coupon and sample-review tables first. Orders and real (non-sample) reviews are untouched.
-// Run with: npx prisma db seed
+// WARNING: re-seeding replaces the sample products, including any edits made to them in /admin.
+// Only run it on a fresh database. Run with: npx prisma db seed
 import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";

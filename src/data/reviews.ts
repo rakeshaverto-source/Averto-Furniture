@@ -9,6 +9,7 @@ export interface ProductReview {
   title: string;
   text: string;
   date: string;
+  verified?: boolean; // written from "My account" by someone who received this product
 }
 
 export function getRatingSummary(reviews: ProductReview[]) {

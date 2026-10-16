@@ -107,6 +107,7 @@ export const getReviews = unstable_cache(
       title: r.title,
       text: r.text,
       date: monthYear.format(r.createdAt),
+      verified: r.verified,
     }));
   },
   ["reviews"],
@@ -126,5 +127,8 @@ export async function findCoupon(rawCode: string): Promise<Coupon | undefined> {
     value: row.value,
     minOrder: row.minOrder ?? undefined,
     maxDiscount: row.maxDiscount ?? undefined,
+    allowedEmails: row.allowedEmails,
+    maxUses: row.maxUses ?? undefined,
+    maxUsesPerCustomer: row.maxUsesPerCustomer ?? undefined,
   };
 }

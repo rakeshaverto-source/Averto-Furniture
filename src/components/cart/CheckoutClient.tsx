@@ -12,33 +12,9 @@ import {
   type CreateOrderResult,
 } from "@/app/actions/checkout";
 import { lookupPincode } from "@/app/actions/pincode";
+import { loadRazorpay, type RazorpayResponse } from "@/lib/razorpay-client";
 import { useCart } from "./CartProvider";
 import CouponBox from "./CouponBox";
-
-interface RazorpayResponse {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-}
-interface RazorpayInstance {
-  open: () => void;
-}
-declare global {
-  interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
-  }
-}
-
-function loadRazorpay(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
 
 const emptyCustomer: CheckoutCustomer = {
   name: "",
@@ -52,7 +28,7 @@ const emptyCustomer: CheckoutCustomer = {
 };
 
 const inputClass =
-  "w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition-colors";
+  "w-full rounded-sm border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition-colors";
 
 interface Done {
   ref: string;
@@ -63,9 +39,28 @@ interface Done {
   phone: string;
 }
 
-export default function CheckoutClient() {
+// Filled in from the signed-in account and the customer's last order; the email is the account's
+// and can't be changed here
+interface SavedAddress {
+  id: string;
+  label: string;
+  name: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export default function CheckoutClient({
+  prefill,
+  addresses = [],
+}: {
+  prefill: Partial<CheckoutCustomer> & { email: string };
+  addresses?: SavedAddress[];
+}) {
   const { lines, subtotal, savings, discount, total, coupon, deposit, syncing, clear } = useCart();
-  const [customer, setCustomer] = useState<CheckoutCustomer>(emptyCustomer);
+  const [customer, setCustomer] = useState<CheckoutCustomer>({ ...emptyCustomer, ...prefill, notes: "" });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CheckoutCustomer, string>>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -132,7 +127,7 @@ export default function CheckoutClient() {
       name: "Averto Furniture",
       description: `Advance for order ${order.ref}`,
       prefill: { name: customer.name, email: customer.email, contact: customer.phone },
-      theme: { color: "#E08A50" },
+      theme: { color: "#1A1A18" },
       handler: async (response: RazorpayResponse) => {
         const result = await confirmPayment({ ref: order.ref, ...response });
         if (result.ok) finish(order, true);
@@ -190,7 +185,7 @@ export default function CheckoutClient() {
         <p className="mt-2 text-sm text-stone-500">Order total: {formatPrice(done.total)}</p>
         <Link
           href="/collections"
-          className="inline-block mt-8 px-8 py-3.5 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium transition-colors"
+          className="inline-block mt-8 px-8 py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium transition-colors"
         >
           Continue browsing
         </Link>
@@ -213,7 +208,7 @@ export default function CheckoutClient() {
         <p className="mt-3 text-stone-600">Add a piece to your cart to check out.</p>
         <Link
           href="/collections"
-          className="inline-block mt-8 px-8 py-3.5 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium transition-colors"
+          className="inline-block mt-8 px-8 py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium transition-colors"
         >
           View collections
         </Link>
@@ -244,7 +239,7 @@ export default function CheckoutClient() {
         <h1 className="font-serif text-4xl sm:text-5xl text-[#111110]">Checkout</h1>
 
         {error && (
-          <p role="alert" className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+          <p role="alert" className="rounded-sm bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
             {error}
           </p>
         )}
@@ -254,12 +249,49 @@ export default function CheckoutClient() {
           {field("name", "Full name", { autoComplete: "name" })}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {field("phone", "Phone", { type: "tel", autoComplete: "tel", inputMode: "tel" })}
-            {field("email", "Email", { type: "email", autoComplete: "email" })}
+            {field("email", "Email (your account)", {
+              type: "email",
+              readOnly: true,
+              className: `${inputClass} bg-stone-50 text-stone-600`,
+            })}
           </div>
         </section>
 
         <section className="space-y-5">
           <h2 className="text-xs uppercase tracking-[0.2em] font-bold text-stone-900">Delivery address</h2>
+          {addresses.length > 1 && (
+            <div>
+              <label htmlFor="co-saved" className="block text-sm font-medium text-stone-900 mb-2">
+                Use a saved address
+              </label>
+              <select
+                id="co-saved"
+                defaultValue={addresses[0].id}
+                onChange={(e) => {
+                  const a = addresses.find((x) => x.id === e.target.value);
+                  if (!a) return;
+                  setCustomer((c) => ({
+                    ...c,
+                    name: a.name,
+                    phone: a.phone,
+                    address: a.address,
+                    city: a.city,
+                    state: a.state,
+                    pincode: a.pincode,
+                  }));
+                  setFieldErrors({});
+                }}
+                className={inputClass}
+              >
+                {addresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label ? `${a.label}: ` : ""}
+                    {a.address}, {a.city} {a.pincode}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {field("address", "Address", { autoComplete: "street-address" })}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {field("city", "City", { autoComplete: "address-level2" })}
@@ -306,13 +338,13 @@ export default function CheckoutClient() {
         <button
           type="submit"
           disabled={busy || syncing}
-          className="w-full sm:w-auto px-10 py-4 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] disabled:opacity-60 text-white text-sm font-medium cursor-pointer transition-colors"
+          className="w-full sm:w-auto px-10 py-4 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] disabled:opacity-60 text-white text-sm font-medium cursor-pointer transition-colors"
         >
           {busy ? "Please wait…" : `Pay advance ${formatPrice(deposit)}`}
         </button>
       </form>
 
-      <aside className="lg:col-span-5 lg:sticky lg:top-24 rounded-2xl border border-stone-200 bg-[#FAF8F5] p-6 sm:p-8">
+      <aside className="lg:col-span-5 lg:sticky lg:top-24 rounded-sm border border-stone-200 bg-[#FAF8F5] p-6 sm:p-8">
         <h2 className="font-serif text-2xl text-[#111110]">Order summary</h2>
         <ul className="mt-5 divide-y divide-stone-200">
           {lines.map((line) => (

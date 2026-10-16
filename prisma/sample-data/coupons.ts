@@ -2,7 +2,7 @@
 // manage real offers in the coupons table.
 import type { Coupon } from "../../src/data/coupons";
 
-export const coupons: Coupon[] = [
+export const coupons: Omit<Coupon, "allowedEmails">[] = [
   {
     code: "WELCOME10",
     description: "10% off your order",

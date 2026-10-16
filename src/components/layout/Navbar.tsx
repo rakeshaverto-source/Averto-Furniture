@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import CartButton from "@/components/cart/CartButton";
+import AccountButton from "@/components/layout/AccountButton";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 
 const navItems = [
@@ -80,12 +81,7 @@ export default function Navbar() {
         {/* Cart + action button */}
         <div className="flex items-center gap-2 sm:gap-3">
           <CartButton />
-          <Link
-            href="/login"
-            className="px-6 py-2.5 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium transition-all shadow-sm shadow-[#E08A50]/20 inline-block"
-          >
-            Login
-          </Link>
+          <AccountButton />
         </div>
       </div>
     </motion.header>

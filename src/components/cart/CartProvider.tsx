@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { CollectionProduct, ProductColor } from "@/data/collections";
 import { depositFor, MAX_QTY_PER_LINE } from "@/data/store";
-import type { Coupon } from "@/data/coupons";
+import type { PublicCoupon } from "@/data/coupons";
 import { quoteCart, type CartQuote } from "@/app/actions/cart";
 import { parseCart, readCoupon, readRaw, sameLine, subscribe, writeCart, writeCoupon } from "@/lib/cart-store";
 import CartDrawer from "./CartDrawer";
@@ -23,7 +23,7 @@ interface CartContextValue {
   count: number;
   subtotal: number;
   savings: number;
-  coupon: Coupon | null;
+  coupon: PublicCoupon | null;
   couponNotice: string;
   discount: number;
   total: number;

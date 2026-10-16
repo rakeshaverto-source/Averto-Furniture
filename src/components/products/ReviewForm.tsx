@@ -9,7 +9,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const initialState: ReviewFormState = { status: "idle" };
 
 const inputClass =
-  "w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition-colors";
+  "w-full rounded-sm border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition-colors";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -62,7 +62,7 @@ function ReviewDialog({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={{ duration: 0.35, ease: EASE }}
-        className="relative w-full sm:max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl"
+        className="relative w-full sm:max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-t-sm sm:rounded-sm shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4 px-6 sm:px-8 pt-6 sm:pt-8">
           <div>
@@ -90,7 +90,7 @@ function ReviewDialog({
             <button
               type="button"
               onClick={onClose}
-              className="mt-8 px-7 py-3 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium cursor-pointer transition-colors"
+              className="mt-8 px-7 py-3 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium cursor-pointer transition-colors"
             >
               Close
             </button>
@@ -110,7 +110,7 @@ function ReviewDialog({
             />
 
             {state.status === "error" && state.message && (
-              <p className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+              <p className="rounded-sm bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
                 {state.message}
               </p>
             )}
@@ -232,7 +232,7 @@ function ReviewDialog({
             <button
               type="submit"
               disabled={pending}
-              className="w-full py-3.5 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] disabled:opacity-60 text-white text-sm font-medium cursor-pointer transition-colors"
+              className="w-full py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] disabled:opacity-60 text-white text-sm font-medium cursor-pointer transition-colors"
             >
               {pending ? "Sending…" : "Submit review"}
             </button>

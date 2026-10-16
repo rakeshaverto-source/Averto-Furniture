@@ -41,6 +41,7 @@ model Product {
   colors     ProductColor[]
   images     ProductImage[]
   reviews    Review[]
+  wishlist   WishlistItem[]
   orderItems OrderItem[]
 
   @@index([categoryId])
@@ -107,11 +108,14 @@ model Review {
   // Invented preview reviews from src/data/reviews.ts. Delete them before launch:
   //   delete from reviews where "isSample";
   isSample  Boolean      @default(false)
+  userId    String? // the account that wrote it, when written from "My account"
+  verified  Boolean      @default(false) // the writer bought and received this product
   createdAt DateTime     @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId, status])
+  @@unique([userId, productId]) // one review per customer per product
   @@map("reviews")
 }
 
@@ -129,6 +133,11 @@ model Coupon {
   value       Int // percent (e.g. 10) or rupees off
   minOrder    Int? // order subtotal needed, in rupees
   maxDiscount Int? // cap for percent coupons, in rupees
+  // Personal coupon: only these customer emails (lower case) may use it. Empty = anyone.
+  // Never sent to the browser.
+  allowedEmails String[] @default([])
+  maxUses            Int? // total uses across all customers; empty = unlimited
+  maxUsesPerCustomer Int? // uses per customer email, e.g. 1 = once each; empty = unlimited
   isActive    Boolean    @default(true)
   expiresAt   DateTime?
   createdAt   DateTime   @default(now())
@@ -138,16 +147,28 @@ model Coupon {
 
 // ─── Orders ─────────────────────────────────────────────────────────────────
 
+// Where the online advance stands
 enum OrderStatus {
   received // no payment gateway configured, the team follows up
   awaiting_payment
   deposit_paid
 }
 
+// Where the piece itself stands, updated by the team in /admin/orders
+enum FulfillmentStatus {
+  new
+  confirmed
+  in_production
+  shipped
+  delivered
+  cancelled
+}
+
 model Order {
   id     String      @id @default(cuid())
   ref    String      @unique // order number shown to the customer
   status OrderStatus
+  userId String? // Supabase Auth user who placed it (empty for orders from before login was required)
 
   // Customer details as entered at checkout (guest checkout, no accounts yet)
   customerName  String
@@ -169,12 +190,23 @@ model Order {
   razorpayOrderId   String?   @unique
   razorpayPaymentId String?
   paidAt            DateTime?
+  // The balance, when the customer pays it online from "My account"
+  balanceRazorpayOrderId   String? @unique
+  balanceRazorpayPaymentId String?
+
+  fulfillment   FulfillmentStatus @default(new)
+  balancePaid   Boolean           @default(false) // the rest after the advance, usually settled offline
+  balancePaidAt DateTime?
+  adminNote     String            @default("") // for the team only, never shown to the customer
 
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   items     OrderItem[]
 
   @@index([createdAt])
+  @@index([fulfillment])
+  @@index([userId])
+  @@index([couponCode])
   @@map("orders")
 }
 
@@ -194,4 +226,36 @@ model OrderItem {
 
   @@index([orderId])
   @@map("order_items")
+}
+
+// ─── Customer accounts ──────────────────────────────────────────────────────
+// Customers are Supabase Auth users; userId is their auth id.
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String   @default("") // e.g. Home, Office
+  name      String
+  phone     String
+  address   String
+  city      String
+  state     String
+  pincode   String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("addresses")
 }

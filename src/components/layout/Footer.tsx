@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Mail, Phone, MapPin } from "lucide-react";
+import { WHATSAPP_NUMBER } from "@/data/collections";
 
 export default function Footer() {
   return (
@@ -27,16 +28,16 @@ export default function Footer() {
             </Link>
             
             <p className="text-sm text-stone-600 font-light leading-relaxed max-w-sm">
-              Contemporary architectural luxury furniture handcrafted with natural Rajasthan slate, solid seasoned teakwood, and generational Indian artisan craftsmanship.
+              Furniture made by hand in Rajasthan slate, seasoned teak and full-grain leather, to the size of your room.
             </p>
 
             <div className="space-y-2 pt-1 text-xs text-stone-600 font-normal">
               <div className="flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5 text-[#E08A50]" />
+                <MapPin className="w-3.5 h-3.5 text-stone-400" />
                 <span>Ateliers: New Delhi · Mumbai · Bengaluru</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-[#E08A50]" />
+                <Phone className="w-3.5 h-3.5 text-stone-400" />
                 <span>Concierge: +91 98765 43210</span>
               </div>
             </div>
@@ -44,50 +45,50 @@ export default function Footer() {
 
           {/* Collections Column */}
           <div className="lg:col-span-2 space-y-4">
-            <h4 className="text-xs font-mono uppercase tracking-[0.25em] text-[#A66E38] font-semibold">Collections</h4>
+            <h4 className="text-sm font-medium text-stone-900">Collections</h4>
             <ul className="space-y-2.5 text-sm text-stone-600 font-light">
-              <li><a href="/collections?category=dining" className="hover:text-stone-900 transition-colors">Monolith Dining</a></li>
-              <li><a href="/collections?category=seating" className="hover:text-stone-900 transition-colors">Lounge & Armchairs</a></li>
-              <li><a href="/collections?category=sofas" className="hover:text-stone-900 transition-colors">Modular Sofas</a></li>
-              <li><a href="/collections?category=beds" className="hover:text-stone-900 transition-colors">Sanctuary Beds</a></li>
-              <li><a href="/collections?category=storage" className="hover:text-stone-900 transition-colors">Stone Credenzas</a></li>
+              <li><a href="/collections?category=dining" className="hover:text-stone-900 transition-colors">Dining tables</a></li>
+              <li><a href="/collections?category=seating" className="hover:text-stone-900 transition-colors">Chairs</a></li>
+              <li><a href="/collections?category=sofas" className="hover:text-stone-900 transition-colors">Sofas</a></li>
+              <li><a href="/collections?category=beds" className="hover:text-stone-900 transition-colors">Beds</a></li>
+              <li><a href="/collections?category=storage" className="hover:text-stone-900 transition-colors">Storage</a></li>
             </ul>
           </div>
 
           {/* Atelier Column */}
           <div className="lg:col-span-2 space-y-4">
-            <h4 className="text-xs font-mono uppercase tracking-[0.25em] text-[#A66E38] font-semibold">Atelier</h4>
+            <h4 className="text-sm font-medium text-stone-900">About</h4>
             <ul className="space-y-2.5 text-sm text-stone-600 font-light">
-              <li><a href="#about" className="hover:text-stone-900 transition-colors">Design Philosophy</a></li>
-              <li><a href="#materials" className="hover:text-stone-900 transition-colors">Material Archive</a></li>
-              <li><a href="#bespoke" className="hover:text-stone-900 transition-colors">Made to Order</a></li>
-              <li><a href="#trade" className="hover:text-stone-900 transition-colors">Trade & Architects</a></li>
+              <li><a href="#about" className="hover:text-stone-900 transition-colors">Our story</a></li>
+              <li><a href="#materials" className="hover:text-stone-900 transition-colors">Materials</a></li>
+              <li><a href="#bespoke" className="hover:text-stone-900 transition-colors">Made to order</a></li>
+              <li><a href="#trade" className="hover:text-stone-900 transition-colors">For architects</a></li>
             </ul>
           </div>
 
           {/* Direct Consultation / Newsletter Column */}
           <div className="lg:col-span-4 space-y-4">
-            <h4 className="text-xs font-mono uppercase tracking-[0.25em] text-[#A66E38] font-semibold">Private Consultation</h4>
+            <h4 className="text-sm font-medium text-stone-900">Talk to us</h4>
             <p className="text-sm text-stone-600 font-light leading-relaxed">
-              Schedule a bespoke consultation with our studio architect or request curated natural material sample boxes.
+              Planning a room? Send us the measurements and we will suggest pieces, or post you material samples.
             </p>
             
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <a
-                href="https://wa.me/919999999999"
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-xs font-medium uppercase tracking-wider transition-all shadow-sm shadow-[#E08A50]/20 hover:-translate-y-0.5 active:translate-y-0"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm transition-colors"
               >
-                <span>Inquire With Atelier</span>
+                <span>Message us on WhatsApp</span>
                 <ArrowUpRight className="w-4 h-4" />
               </a>
               <a
                 href="mailto:concierge@averto.in"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-stone-300 hover:border-stone-400 bg-white/70 hover:bg-white text-stone-800 text-xs font-medium uppercase tracking-wider transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-sm border border-stone-300 hover:border-stone-400 bg-white/70 hover:bg-white text-stone-800 text-sm transition-colors"
               >
-                <Mail className="w-3.5 h-3.5 text-[#E08A50]" />
-                <span>Email Us</span>
+                <Mail className="w-3.5 h-3.5" />
+                <span>Email us</span>
               </a>
             </div>
           </div>
@@ -98,8 +99,8 @@ export default function Footer() {
           <p>© {new Date().getFullYear()} Averto Furniture Studio. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <a href="#" className="hover:text-stone-800 transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-stone-800 transition-colors">Terms of Commission</a>
-            <a href="#" className="hover:text-stone-800 transition-colors">Sustainability Guarantee</a>
+            <a href="#" className="hover:text-stone-800 transition-colors">Terms</a>
+            <a href="#" className="hover:text-stone-800 transition-colors">Warranty</a>
           </div>
         </div>
       </div>

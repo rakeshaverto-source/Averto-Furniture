@@ -32,7 +32,7 @@ export default function CustomPieceCta() {
             href={`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-semibold tracking-wide whitespace-nowrap transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-semibold tracking-wide whitespace-nowrap transition-colors"
           >
             <span>Start A Commission</span>
             <ArrowUpRight className="w-4 h-4" />

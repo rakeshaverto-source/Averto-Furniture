@@ -56,7 +56,12 @@ export default function RootLayout({
       lang="en"
       className={`${plusJakartaSans.variable} ${cormorantGaramond.variable} scroll-smooth antialiased`}
     >
-      <body className="min-h-screen bg-white text-[#1A1A18] font-sans selection:bg-[#1A1A18] selection:text-[#FAFAF8]">
+      {/* Browser extensions (e.g. ColorZilla's cz-shortcut-listen) add attributes to <body> before React
+          loads. This only ignores attribute differences on <body> itself, not on anything inside it. */}
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-white text-[#1A1A18] font-sans selection:bg-[#1A1A18] selection:text-[#FAFAF8]"
+      >
         <MotionProvider>
           <CartProvider>{children}</CartProvider>
         </MotionProvider>

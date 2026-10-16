@@ -17,6 +17,7 @@ import { getRatingSummary, type ProductReview } from "@/data/reviews";
 import { DEPOSIT_PERCENT, depositFor } from "@/data/store";
 import { useCart } from "@/components/cart/CartProvider";
 import PriceTag from "./PriceTag";
+import WishlistButton from "@/components/account/WishlistButton";
 import ProductReviews, { StarRating } from "./ProductReviews";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -82,7 +83,7 @@ function ProductGallery({
 
   return (
     <div className="flex flex-col lg:flex-row-reverse lg:justify-end gap-3 sm:gap-4">
-      <div className="relative flex-1 min-w-0 aspect-[4/5] lg:max-w-[26rem] lg:max-h-[calc(100vh-9rem)] overflow-hidden rounded-2xl bg-[#ECE8E1]">
+      <div className="relative flex-1 min-w-0 aspect-[4/5] lg:max-w-[26rem] lg:max-h-[calc(100vh-9rem)] overflow-hidden rounded-sm bg-[#ECE8E1]">
         <AnimatePresence initial={false}>
           <motion.div
             key={`${active}-${current.src}`}
@@ -334,7 +335,7 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={() => add(product.id, color?.id)}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] text-white text-sm font-medium whitespace-nowrap transition-colors cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium whitespace-nowrap transition-colors cursor-pointer"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span>Add to cart</span>
@@ -343,11 +344,12 @@ export default function ProductDetail({
                   href={whatsappHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl border border-stone-300 hover:border-stone-900 text-stone-900 text-sm font-medium whitespace-nowrap transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-sm border border-stone-300 hover:border-stone-900 text-stone-900 text-sm font-medium whitespace-nowrap transition-colors"
                 >
                   <span>Enquire on WhatsApp</span>
                   <ArrowUpRight className="w-4 h-4" />
                 </a>
+                <WishlistButton productId={product.id} className="h-12 sm:w-12 shrink-0" />
               </div>
               <p className="mt-3 text-xs text-stone-500">
                 Pay a {DEPOSIT_PERCENT}% advance ({formatPrice(depositFor(price))}) online to place your order.
@@ -386,8 +388,9 @@ export default function ProductDetail({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {related.map((item) => (
-              <Link key={item.id} href={`/products/${item.id}`} className="group block">
-                <div className="relative aspect-[4/3.4] w-full overflow-hidden rounded-xl bg-[#ECE8E1]">
+              <div key={item.id} className="relative">
+              <Link href={`/products/${item.id}`} className="group block">
+                <div className="relative aspect-[4/3.4] w-full overflow-hidden rounded-sm bg-[#ECE8E1]">
                   <div className={`absolute inset-0 ${item.zoomClass ?? ""}`}>
                     <Image
                       src={item.image}
@@ -407,6 +410,8 @@ export default function ProductDetail({
                   </span>
                 </div>
               </Link>
+              <WishlistButton productId={item.id} variant="overlay" className="absolute top-3 right-3" />
+              </div>
             ))}
           </div>
         </div>
@@ -432,7 +437,7 @@ export default function ProductDetail({
             <button
               type="button"
               onClick={() => add(product.id, color?.id)}
-              className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#E08A50] text-white text-sm font-medium cursor-pointer"
+              className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-sm bg-[#1A1A18] text-white text-sm font-medium cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4" />
               Add to cart

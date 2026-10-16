@@ -22,44 +22,44 @@ interface LifestyleCard {
 const lifestyleCollections: LifestyleCard[] = [
   {
     id: "living",
-    category: "FOR THE LIVING ROOM",
-    headline: "Architectural Lounges.",
-    subheadline: "Sculpted In Bouclé.",
-    description: "Curved modular sectionals and deep-seated armchairs designed to anchor spacious modern living sanctuaries.",
-    ctaText: "SHOP LIVING",
+    category: "Living room",
+    headline: "Sofas and armchairs",
+    subheadline: "in bouclé and leather",
+    description: "Modular sofas you can arrange to fit the room, and deep chairs to sink into.",
+    ctaText: "Shop living room",
     href: "#sofas",
     image: "/hero/modular-sofa.jpg",
     alt: "Curved bouclé architectural modular sofa in modern living room",
   },
   {
     id: "dining",
-    category: "FOR THE DINING SPACE",
-    headline: "Monolithic Slate.",
-    subheadline: "Generational Tables.",
-    description: "20mm flame-cleft natural Rajasthan stone surfaces perched on fluted solid teakwood pedestals.",
-    ctaText: "SHOP DINING",
+    category: "Dining",
+    headline: "Slate dining tables",
+    subheadline: "made to your length",
+    description: "20mm Rajasthan slate on fluted teak bases. Heat-proof, and built to be handed down.",
+    ctaText: "Shop dining",
     href: "#dining",
     image: "/hero/dining-table.jpg",
     alt: "Natural Rajasthan slate dining table with fluted wood pedestal",
   },
   {
     id: "bedroom",
-    category: "FOR THE SANCTUARY",
-    headline: "Low-Profile Beds.",
-    subheadline: "Illuminated Slate.",
-    description: "Backlit floating platform bedframes with hand-split stone slabs and organic Belgian linen textures.",
-    ctaText: "SHOP BEDROOM",
+    category: "Bedroom",
+    headline: "Low beds",
+    subheadline: "with slate headboards",
+    description: "Platform beds with a softly lit slate headboard and Belgian linen.",
+    ctaText: "Shop bedroom",
     href: "#beds",
     image: "/hero/bed.jpg",
     alt: "Architectural low-profile platform bed with backlit natural stone slab",
   },
   {
     id: "accents",
-    category: "FOR BESPOKE ACCENTS",
-    headline: "Chiseled Tables.",
-    subheadline: "Full-Grain Leather.",
-    description: "Caramel saddle hide lounge chairs paired with live-edge stone coffee tables and statement lighting.",
-    ctaText: "SHOP ACCENTS",
+    category: "Accents",
+    headline: "Coffee tables",
+    subheadline: "and leather chairs",
+    description: "Saddle-leather lounge chairs, stone coffee tables and lighting to finish a room.",
+    ctaText: "Shop accents",
     href: "#seating",
     image: "/hero/card-coffee.jpg",
     alt: "Fluted oak and natural slate circular coffee table",
@@ -78,14 +78,11 @@ export default function ShopBySpaceSection() {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-2xl mx-auto space-y-2.5"
         >
-          <span className="text-[11px] sm:text-xs uppercase tracking-[0.25em] text-[#A66E38] font-bold block">
-            Curated Spaces
-          </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-bold text-[#111110] tracking-tight">
-            <TextReveal text="Shop By Living Space" />
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-normal text-[#111110] tracking-tight">
+            <TextReveal text="Shop by room" />
           </h2>
           <p className="text-sm sm:text-base text-stone-600 font-normal max-w-md mx-auto pt-1 leading-relaxed">
-            Curated architectural collections handcrafted for distinct spatial atmospheres.
+            Start with the room you are furnishing.
           </p>
         </motion.div>
 
@@ -114,7 +111,7 @@ function SpaceCard({ card, idx }: { card: LifestyleCard; idx: number }) {
     <div ref={cardRef}>
       <Link
         href={card.href}
-        className="group relative block aspect-[4/4] sm:aspect-[4/4.2] rounded-2xl overflow-hidden shadow-lg border border-stone-200/60 hover:shadow-2xl transition-all duration-500"
+        className="group relative block aspect-[4/4] sm:aspect-[4/4.2] rounded-sm overflow-hidden transition-all duration-500"
       >
         {/* Photo + overlay open like a curtain from the bottom edge */}
         <motion.div
@@ -156,7 +153,7 @@ function SpaceCard({ card, idx }: { card: LifestyleCard; idx: number }) {
           transition={{ duration: 0.8, delay: stagger + 0.5, ease }}
         >
           {/* Category Micro-Label */}
-          <span className="text-[11px] font-mono tracking-[0.25em] uppercase text-[#E8D4B0] font-semibold">
+          <span className="text-xs tracking-wide text-white/75">
             {card.category}
           </span>
 
@@ -173,7 +170,7 @@ function SpaceCard({ card, idx }: { card: LifestyleCard; idx: number }) {
 
           {/* Underlined Editorial CTA with Arrow */}
           <div className="pt-2">
-            <span className="inline-flex items-center gap-2 pb-1 border-b border-white/80 group-hover:border-[#E8D4B0] text-xs font-semibold uppercase tracking-[0.2em] text-white group-hover:text-[#E8D4B0] transition-colors">
+            <span className="inline-flex items-center gap-2 pb-1 border-b border-white/80 text-sm text-white transition-colors">
               <span>{card.ctaText}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" />
             </span>
