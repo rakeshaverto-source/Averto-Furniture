@@ -6,12 +6,7 @@ import Link from "next/link";
 import PriceTag from "@/components/products/PriceTag";
 import { ArrowUpRight, ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  collectionCategories,
-  collectionProducts,
-  WHATSAPP_NUMBER,
-  type CollectionProduct,
-} from "@/data/collections";
+import { WHATSAPP_NUMBER, type CollectionCategory, type CollectionProduct } from "@/data/collections";
 
 type SortKey = "featured" | "price-asc" | "price-desc";
 
@@ -99,6 +94,7 @@ function FilterSection({
 }
 
 interface FilterPanelProps {
+  allCategories: CollectionCategory[];
   categories: string[];
   prices: string[];
   materials: string[];
@@ -111,6 +107,7 @@ interface FilterPanelProps {
 }
 
 function FilterPanel({
+  allCategories,
   categories,
   prices,
   materials,
@@ -121,7 +118,7 @@ function FilterPanel({
   onMaterial,
   onClear,
 }: FilterPanelProps) {
-  const categoryRows = collectionCategories.map((c) => ({
+  const categoryRows = allCategories.map((c) => ({
     id: c.id,
     name: c.name,
     count: counts[c.id] ?? 0,
@@ -202,7 +199,15 @@ function FilterPanel({
   );
 }
 
-export default function CollectionsBrowser({ initialCategories }: { initialCategories: string[] }) {
+export default function CollectionsBrowser({
+  initialCategories,
+  categories: allCategories,
+  products,
+}: {
+  initialCategories: string[];
+  categories: CollectionCategory[];
+  products: CollectionProduct[];
+}) {
   const [categories, setCategories] = useState<string[]>(initialCategories);
   const [prices, setPrices] = useState<string[]>([]);
   const [materials, setMaterials] = useState<string[]>([]);
@@ -211,13 +216,13 @@ export default function CollectionsBrowser({ initialCategories }: { initialCateg
 
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const p of collectionProducts) map[p.category] = (map[p.category] ?? 0) + 1;
+    for (const p of products) map[p.category] = (map[p.category] ?? 0) + 1;
     return map;
-  }, []);
+  }, [products]);
 
   const visible = useMemo(() => {
     const activeRanges = priceRanges.filter((r) => prices.includes(r.id));
-    const list = collectionProducts.filter((p) => {
+    const list = products.filter((p) => {
       if (categories.length && !categories.includes(p.category)) return false;
       if (activeRanges.length && !activeRanges.some((r) => p.priceInr >= r.min && p.priceInr < r.max)) {
         return false;
@@ -228,11 +233,11 @@ export default function CollectionsBrowser({ initialCategories }: { initialCateg
     if (sort === "price-asc") list.sort((a, b) => a.priceInr - b.priceInr);
     if (sort === "price-desc") list.sort((a, b) => b.priceInr - a.priceInr);
     return list;
-  }, [categories, prices, materials, sort]);
+  }, [products, categories, prices, materials, sort]);
 
   // A single ticked category gets its own title and blurb; otherwise show the general heading
   const activeCategory =
-    categories.length === 1 ? collectionCategories.find((c) => c.id === categories[0]) : undefined;
+    categories.length === 1 ? allCategories.find((c) => c.id === categories[0]) : undefined;
   const activeCount = categories.length + prices.length + materials.length;
 
   // Keep the ticked categories shareable (/collections?category=dining,sofas) without a navigation
@@ -268,6 +273,7 @@ export default function CollectionsBrowser({ initialCategories }: { initialCateg
   }, [drawerOpen]);
 
   const panelProps: FilterPanelProps = {
+    allCategories,
     categories,
     prices,
     materials,
@@ -416,7 +422,7 @@ export default function CollectionsBrowser({ initialCategories }: { initialCateg
 
                     <div className="pt-5">
                       <span className="text-[11px] uppercase tracking-[0.18em] text-[#A66E38] font-semibold">
-                        {collectionCategories.find((c) => c.id === product.category)?.name}
+                        {allCategories.find((c) => c.id === product.category)?.name}
                       </span>
                       <h3 className="font-serif text-xl sm:text-2xl text-stone-900 leading-snug mt-1.5">
                         <Link

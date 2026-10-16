@@ -1,0 +1,197 @@
+// Averto store database. Money is stored in whole rupees (Int), matching the rest of the app.
+// Tables are mapped to snake_case names so they read naturally in the Supabase dashboard.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Catalogue ──────────────────────────────────────────────────────────────
+
+model Category {
+  id        String    @id // slug used in URLs, e.g. "sofas"
+  name      String
+  blurb     String
+  sortOrder Int       @default(0)
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id               String   @id // slug used in URLs and saved carts, e.g. "monolith-slate-table"
+  name             String
+  categoryId       String
+  badge            String
+  description      String
+  specs            String
+  priceInr         Int // price the customer pays for the default colour
+  originalPriceInr Int? // crossed-out price; a colour's priceDelta applies to both
+  zoomClass        String? // optional crop for photos with a white frame baked in
+  isActive         Boolean  @default(true) // hide a product without deleting it
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  category   Category       @relation(fields: [categoryId], references: [id])
+  colors     ProductColor[]
+  images     ProductImage[]
+  reviews    Review[]
+  orderItems OrderItem[]
+
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductColor {
+  id         String  @id @default(cuid())
+  productId  String
+  slug       String // e.g. "smoked-oak"; saved carts refer to a colour by this
+  name       String
+  hex        String
+  priceDelta Int     @default(0) // added to the product price when chosen
+  sortOrder  Int     @default(0) // the first colour is the default
+
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images  ProductImage[]
+
+  @@unique([productId, slug])
+  @@map("product_colors")
+}
+
+enum ImageFit {
+  cover
+  contain // keeps white-background studio shots uncropped
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  colorId   String? // set when the photo belongs to one colour
+  // Either a path inside the Supabase "products" bucket ("oak-table/main.webp")
+  // or, for the current sample photos, a file in /public ("/hero/dining-table.jpg").
+  path      String
+  label     String   @default("") // alt text / thumbnail caption
+  fit       ImageFit @default(cover)
+  sortOrder Int      @default(0) // the lowest one without a colour is the main photo
+
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  color   ProductColor? @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// ─── Reviews ────────────────────────────────────────────────────────────────
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+model Review {
+  id        String       @id @default(cuid())
+  productId String
+  name      String
+  location  String
+  email     String? // never shown on the site
+  rating    Int // 1-5
+  title     String
+  text      String
+  status    ReviewStatus @default(pending) // only approved reviews are shown
+  // Invented preview reviews from src/data/reviews.ts. Delete them before launch:
+  //   delete from reviews where "isSample";
+  isSample  Boolean      @default(false)
+  createdAt DateTime     @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@map("reviews")
+}
+
+// ─── Coupons ────────────────────────────────────────────────────────────────
+
+enum CouponType {
+  percent
+  flat
+}
+
+model Coupon {
+  code        String     @id // stored upper case
+  description String
+  type        CouponType
+  value       Int // percent (e.g. 10) or rupees off
+  minOrder    Int? // order subtotal needed, in rupees
+  maxDiscount Int? // cap for percent coupons, in rupees
+  isActive    Boolean    @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@map("coupons")
+}
+
+// ─── Orders ─────────────────────────────────────────────────────────────────
+
+enum OrderStatus {
+  received // no payment gateway configured, the team follows up
+  awaiting_payment
+  deposit_paid
+}
+
+model Order {
+  id     String      @id @default(cuid())
+  ref    String      @unique // order number shown to the customer
+  status OrderStatus
+
+  // Customer details as entered at checkout (guest checkout, no accounts yet)
+  customerName  String
+  customerPhone String
+  customerEmail String
+  address       String
+  city          String
+  state         String
+  pincode       String
+  notes         String @default("")
+
+  subtotal       Int
+  couponCode     String? // copied, not linked, so deleting a coupon keeps old orders intact
+  discount       Int     @default(0)
+  total          Int
+  deposit        Int
+  depositPercent Int
+
+  razorpayOrderId   String?   @unique
+  razorpayPaymentId String?
+  paidAt            DateTime?
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  items     OrderItem[]
+
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String? // kept for reports; cleared if the product is ever deleted
+  // Snapshot of what was bought, so later price or name changes don't rewrite history
+  name      String
+  colorSlug String?
+  colorName String?
+  qty       Int
+  unitPrice Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@map("order_items")
+}

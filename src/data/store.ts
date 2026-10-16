@@ -1,4 +1,4 @@
-import { getProduct, type CollectionProduct, type ProductColor } from "./collections";
+import type { CollectionProduct, ProductColor } from "./collections";
 
 // PLACEHOLDER: share of the order total collected online as an advance; the balance is settled later.
 // Change this one number to change the advance everywhere (cart, checkout and the payment itself).
@@ -10,14 +10,13 @@ export function depositFor(total: number) {
   return Math.round((total * DEPOSIT_PERCENT) / 100);
 }
 
-// The single source of truth for what a cart line costs. The server uses it too, so a tampered
-// browser can never change the amount that gets charged.
-export function resolveLine(
-  productId: string,
+// The single source of truth for what a cart line costs. Only the server calls it with products from
+// the database, so a tampered browser can never change the amount that gets charged.
+// An unknown or missing colour means the product's default (first) colour.
+export function priceLine(
+  product: CollectionProduct,
   colorId?: string,
-): { product: CollectionProduct; color?: ProductColor; unit: number; originalUnit?: number } | null {
-  const product = getProduct(productId);
-  if (!product) return null;
+): { product: CollectionProduct; color?: ProductColor; unit: number; originalUnit?: number } {
   const color = product.colors?.find((c) => c.id === colorId) ?? product.colors?.[0];
   const delta = color?.priceDelta ?? 0;
   return {

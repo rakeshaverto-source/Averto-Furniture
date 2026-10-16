@@ -1,10 +1,9 @@
 "use server";
 
-import { promises as fs } from "fs";
-import path from "path";
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { DEPOSIT_PERCENT, MAX_QTY_PER_LINE, depositFor, resolveLine } from "@/data/store";
-import { applyCoupon } from "@/data/coupons";
+import { DEPOSIT_PERCENT, depositFor } from "@/data/store";
+import { prisma } from "@/lib/prisma";
+import { MAX_CART_LINES, priceCoupon, priceItems, subtotalOf } from "@/lib/pricing";
 
 export interface CheckoutItem {
   productId: string;
@@ -39,42 +38,6 @@ export type CreateOrderResult =
 
 export type ConfirmPaymentResult = { ok: true; ref: string } | { ok: false; error: string };
 
-interface StoredOrder {
-  ref: string;
-  createdAt: string;
-  // received: no payment gateway configured, the team follows up | awaiting_payment | deposit_paid
-  status: "received" | "awaiting_payment" | "deposit_paid";
-  customer: CheckoutCustomer;
-  lines: { productId: string; name: string; colorId?: string; colorName?: string; qty: number; unit: number }[];
-  subtotal: number;
-  couponCode?: string;
-  discount: number;
-  total: number;
-  deposit: number;
-  depositPercent: number;
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
-  paidAt?: string;
-}
-
-// Orders are kept in this file for now (never committed, see .gitignore). A real database is the
-// next step before launch; the shape above is what to store there.
-const ORDERS_FILE = path.join(process.cwd(), "data", "orders.json");
-
-async function readOrders(): Promise<StoredOrder[]> {
-  try {
-    const data: unknown = JSON.parse(await fs.readFile(ORDERS_FILE, "utf8"));
-    return Array.isArray(data) ? (data as StoredOrder[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeOrders(orders: StoredOrder[]) {
-  await fs.mkdir(path.dirname(ORDERS_FILE), { recursive: true });
-  await fs.writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2));
-}
-
 const clean = (value: unknown, max: number) => String(value ?? "").trim().slice(0, max);
 
 function validateCustomer(input: CheckoutCustomer) {
@@ -107,24 +70,18 @@ export async function createOrder(
 ): Promise<CreateOrderResult> {
   // This can be called directly with a POST, so the cart and the amount are rebuilt here from our own
   // price list; nothing the browser sends about prices is trusted.
-  if (!Array.isArray(items) || items.length === 0 || items.length > 20) {
+  if (!Array.isArray(items) || items.length === 0 || items.length > MAX_CART_LINES) {
     return { ok: false, error: "Your cart is empty." };
   }
-  const lines: StoredOrder["lines"] = [];
-  for (const item of items) {
-    const resolved = resolveLine(String(item?.productId), item?.colorId ? String(item.colorId) : undefined);
-    const qty = Math.floor(Number(item?.qty));
-    if (!resolved || !Number.isFinite(qty) || qty < 1 || qty > MAX_QTY_PER_LINE) {
-      return { ok: false, error: "Something in your cart is no longer available. Please review it and try again." };
-    }
-    lines.push({
-      productId: resolved.product.id,
-      name: resolved.product.name,
-      colorId: resolved.color?.id,
-      colorName: resolved.color?.name,
-      qty,
-      unit: resolved.unit,
-    });
+  let priced: Awaited<ReturnType<typeof priceItems>>;
+  try {
+    priced = await priceItems(items);
+  } catch {
+    return { ok: false, error: "We could not place your order right now. Please try again or contact us." };
+  }
+  const { lines, missing } = priced;
+  if (missing > 0 || lines.length === 0) {
+    return { ok: false, error: "Something in your cart is no longer available. Please review it and try again." };
   }
 
   const { customer, errors } = validateCustomer(customerInput);
@@ -132,13 +89,13 @@ export async function createOrder(
     return { ok: false, error: "Please check the highlighted details.", fieldErrors: errors };
   }
 
-  const subtotal = lines.reduce((sum, l) => sum + l.unit * l.qty, 0);
+  const subtotal = subtotalOf(lines);
 
-  // The coupon is checked again here against our own list and the rebuilt subtotal
+  // The coupon is checked again here against the database and the rebuilt subtotal
   let discount = 0;
   let couponCode: string | undefined;
   if (couponInput) {
-    const result = applyCoupon(couponInput, subtotal);
+    const result = await priceCoupon(String(couponInput), subtotal);
     if (!result.ok) return { ok: false, error: `Your coupon could not be applied. ${result.error}` };
     discount = result.discount;
     couponCode = result.coupon.code;
@@ -146,18 +103,33 @@ export async function createOrder(
   const total = subtotal - discount;
   const deposit = depositFor(total);
   const ref = `AV-${randomBytes(5).toString("hex").toUpperCase()}`;
-  const order: StoredOrder = {
+  const order = {
     ref,
-    createdAt: new Date().toISOString(),
-    status: "received",
-    customer,
-    lines,
+    customerName: customer.name,
+    customerPhone: customer.phone,
+    customerEmail: customer.email,
+    address: customer.address,
+    city: customer.city,
+    state: customer.state,
+    pincode: customer.pincode,
+    notes: customer.notes,
     subtotal,
     couponCode,
     discount,
     total,
     deposit,
     depositPercent: DEPOSIT_PERCENT,
+    // a copy of what was bought, so later price or name changes never rewrite this order
+    items: {
+      create: lines.map((l) => ({
+        productId: l.productId,
+        name: l.product.name,
+        colorSlug: l.colorId,
+        colorName: l.color?.name,
+        qty: l.qty,
+        unitPrice: l.unit,
+      })),
+    },
   };
 
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -166,7 +138,7 @@ export async function createOrder(
   try {
     if (!keyId || !keySecret) {
       // No payment gateway set up yet: keep the order so the team can contact the customer
-      await writeOrders([...(await readOrders()), order]);
+      await prisma.order.create({ data: { ...order, status: "received" } });
       return { ok: true, mode: "manual", ref, total, deposit };
     }
 
@@ -186,9 +158,9 @@ export async function createOrder(
       return { ok: false, error: "We could not start the payment. Please try again in a moment." };
     }
 
-    order.status = "awaiting_payment";
-    order.razorpayOrderId = razorpayOrder.id;
-    await writeOrders([...(await readOrders()), order]);
+    await prisma.order.create({
+      data: { ...order, status: "awaiting_payment", razorpayOrderId: razorpayOrder.id },
+    });
     return {
       ok: true,
       mode: "razorpay",
@@ -213,25 +185,33 @@ export async function confirmPayment(input: {
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) return { ok: false, error: "Payments are not configured." };
 
-  const orders = await readOrders();
-  const order = orders.find((o) => o.ref === String(input?.ref));
-  if (!order || !order.razorpayOrderId || order.razorpayOrderId !== String(input.razorpay_order_id)) {
-    return { ok: false, error: "We could not match this payment to an order." };
+  try {
+    const order = await prisma.order.findUnique({ where: { ref: String(input?.ref ?? "") } });
+    if (!order || !order.razorpayOrderId || order.razorpayOrderId !== String(input.razorpay_order_id)) {
+      return { ok: false, error: "We could not match this payment to an order." };
+    }
+    if (order.status === "deposit_paid") return { ok: true, ref: order.ref };
+
+    // Razorpay signs "order_id|payment_id" with our secret; anything else is not a real payment
+    const expected = createHmac("sha256", keySecret)
+      .update(`${order.razorpayOrderId}|${String(input.razorpay_payment_id)}`)
+      .digest("hex");
+    const given = String(input.razorpay_signature);
+    const valid =
+      given.length === expected.length && timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+    if (!valid) return { ok: false, error: "We could not verify this payment." };
+
+    // Only an order still waiting for payment moves on, so a repeated confirmation changes nothing
+    await prisma.order.updateMany({
+      where: { id: order.id, status: "awaiting_payment" },
+      data: {
+        status: "deposit_paid",
+        razorpayPaymentId: String(input.razorpay_payment_id),
+        paidAt: new Date(),
+      },
+    });
+    return { ok: true, ref: order.ref };
+  } catch {
+    return { ok: false, error: "We could not confirm this payment right now." };
   }
-  if (order.status === "deposit_paid") return { ok: true, ref: order.ref };
-
-  // Razorpay signs "order_id|payment_id" with our secret; anything else is not a real payment
-  const expected = createHmac("sha256", keySecret)
-    .update(`${order.razorpayOrderId}|${String(input.razorpay_payment_id)}`)
-    .digest("hex");
-  const given = String(input.razorpay_signature);
-  const valid =
-    given.length === expected.length && timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-  if (!valid) return { ok: false, error: "We could not verify this payment." };
-
-  order.status = "deposit_paid";
-  order.razorpayPaymentId = String(input.razorpay_payment_id);
-  order.paidAt = new Date().toISOString();
-  await writeOrders(orders);
-  return { ok: true, ref: order.ref };
 }

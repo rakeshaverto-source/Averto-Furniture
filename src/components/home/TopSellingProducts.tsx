@@ -4,14 +4,13 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import PriceTag from "@/components/products/PriceTag";
-import { getProduct } from "@/data/collections";
 import { ArrowUpRight, ShoppingBag, Eye, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
 interface Product {
   id: string;
-  // matches a product in src/data/collections.ts, so the card can open its page
+  // matches a product id in the database, so the card can open its page and show its live price
   slug: string;
   name: string;
   category: string;
@@ -89,7 +88,10 @@ const topProducts: Product[] = [
 
 const filterCategories = ["All", "Living", "Dining", "Bedroom", "Storage", "Lighting"];
 
-export default function TopSellingProducts() {
+// Live prices from the database, keyed by product id (see src/app/page.tsx)
+export type TopSellingPrices = Record<string, { priceInr: number; originalPriceInr?: number }>;
+
+export default function TopSellingProducts({ prices }: { prices: TopSellingPrices }) {
   const [activeFilter, setActiveFilter] = useState("All");
 
   const filtered =
@@ -202,8 +204,8 @@ export default function TopSellingProducts() {
                 {/* Price and CTA */}
                 <div className="mt-6 pt-4 border-t border-stone-200/80 flex items-center justify-between">
                   <PriceTag
-                    price={getProduct(product.slug)?.priceInr ?? 0}
-                    original={getProduct(product.slug)?.originalPriceInr}
+                    price={prices[product.slug]?.priceInr ?? 0}
+                    original={prices[product.slug]?.originalPriceInr}
                   />
 
                   <Link

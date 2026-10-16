@@ -13,7 +13,8 @@ import CouponBox from "./CouponBox";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function CartDrawer() {
-  const { lines, subtotal, savings, discount, total, deposit, drawerOpen, closeDrawer, setQty, remove } = useCart();
+  const { lines, subtotal, savings, discount, total, deposit, syncing, drawerOpen, closeDrawer, setQty, remove } =
+    useCart();
 
   // Esc closes; page scroll is locked while the drawer is open
   useEffect(() => {
@@ -59,7 +60,11 @@ export default function CartDrawer() {
               </button>
             </div>
 
-            {lines.length === 0 ? (
+            {lines.length === 0 && syncing ? (
+              <div className="flex-1 flex items-center justify-center text-sm text-stone-500" role="status">
+                Loading your cart…
+              </div>
+            ) : lines.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
                 <ShoppingBag className="w-10 h-10 text-stone-300" strokeWidth={1.2} />
                 <p className="mt-4 font-serif text-xl text-stone-900">Your cart is empty</p>

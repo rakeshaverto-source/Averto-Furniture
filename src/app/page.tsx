@@ -3,15 +3,23 @@ import HeroBanner from "@/components/home/HeroBanner";
 import FannedCardsSection from "@/components/home/FannedCardsSection";
 import ShopByCategory from "@/components/home/ShopByCategory";
 import ShopBySpaceSection from "@/components/home/ShopBySpaceSection";
-import TopSellingProducts from "@/components/home/TopSellingProducts";
+import TopSellingProducts, { type TopSellingPrices } from "@/components/home/TopSellingProducts";
 import BespokeSectorsSection from "@/components/home/BespokeSectorsSection";
 import InteractiveShowcaseSlider from "@/components/home/InteractiveShowcaseSlider";
 import ClientReviewsSection from "@/components/home/ClientReviewsSection";
 import Footer from "@/components/layout/Footer";
 import StatsStrip from "@/components/home/StatsStrip";
 import ScrollProgress from "@/components/motion/ScrollProgress";
+import { getProducts } from "@/lib/catalog";
 
-export default function Home() {
+// Rebuilt from the database at most every 5 minutes, so price changes reach the home page
+export const revalidate = 300;
+
+export default async function Home() {
+  const prices: TopSellingPrices = Object.fromEntries(
+    (await getProducts()).map((p) => [p.id, { priceInr: p.priceInr, originalPriceInr: p.originalPriceInr }]),
+  );
+
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex flex-col">
       {/* Reading progress line pinned to the top of the viewport */}
@@ -33,7 +41,7 @@ export default function Home() {
       <ShopBySpaceSection />
 
       {/* 6. Top Selling Products (Most requested luxury commissions) */}
-      <TopSellingProducts />
+      <TopSellingProducts prices={prices} />
 
       {/* Animated trust counters (commissions, guarantee, ateliers, rating) */}
       <StatsStrip />

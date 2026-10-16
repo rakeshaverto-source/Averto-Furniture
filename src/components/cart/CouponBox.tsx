@@ -10,10 +10,14 @@ export default function CouponBox() {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = applyCoupon(code);
+    if (checking) return;
+    setChecking(true);
+    const result = await applyCoupon(code);
+    setChecking(false);
     if (result.ok) {
       setCode("");
       setError("");
@@ -81,9 +85,10 @@ export default function CouponBox() {
             />
             <button
               type="submit"
-              className="shrink-0 px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-medium cursor-pointer transition-colors"
+              disabled={checking}
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-wait"
             >
-              Apply
+              {checking ? "Checking…" : "Apply"}
             </button>
           </div>
           {error && <p className="mt-2 text-xs text-red-700">{error}</p>}

@@ -64,7 +64,7 @@ interface Done {
 }
 
 export default function CheckoutClient() {
-  const { lines, subtotal, savings, discount, total, coupon, deposit, clear } = useCart();
+  const { lines, subtotal, savings, discount, total, coupon, deposit, syncing, clear } = useCart();
   const [customer, setCustomer] = useState<CheckoutCustomer>(emptyCustomer);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CheckoutCustomer, string>>>({});
   const [error, setError] = useState("");
@@ -151,7 +151,8 @@ export default function CheckoutClient() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (busy || lines.length === 0) return;
+    // wait for the latest cart change to be priced, so the order matches what is on screen
+    if (busy || syncing || lines.length === 0) return;
     setBusy(true);
     setError("");
     setFieldErrors({});
@@ -194,6 +195,14 @@ export default function CheckoutClient() {
           Continue browsing
         </Link>
       </div>
+    );
+  }
+
+  if (lines.length === 0 && syncing) {
+    return (
+      <p className="text-center py-20 text-stone-500" role="status">
+        Loading your cart…
+      </p>
     );
   }
 
@@ -296,7 +305,7 @@ export default function CheckoutClient() {
 
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || syncing}
           className="w-full sm:w-auto px-10 py-4 rounded-xl bg-[#E08A50] hover:bg-[#cf7b43] disabled:opacity-60 text-white text-sm font-medium cursor-pointer transition-colors"
         >
           {busy ? "Please wait…" : `Pay advance ${formatPrice(deposit)}`}

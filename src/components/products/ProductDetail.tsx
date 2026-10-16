@@ -8,8 +8,8 @@ import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-
 import {
   discountPercent,
   formatPrice,
-  getCategory,
   WHATSAPP_NUMBER,
+  type CollectionCategory,
   type CollectionProduct,
   type ProductImage,
 } from "@/data/collections";
@@ -174,14 +174,15 @@ function ProductGallery({
 
 export default function ProductDetail({
   product,
+  category,
   related,
   reviews,
 }: {
   product: CollectionProduct;
+  category?: CollectionCategory;
   related: CollectionProduct[];
   reviews: ProductReview[];
 }) {
-  const category = getCategory(product.category);
   const ratingSummary = getRatingSummary(reviews);
   const { add } = useCart();
 

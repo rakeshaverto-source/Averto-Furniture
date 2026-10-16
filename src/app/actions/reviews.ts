@@ -1,9 +1,7 @@
 "use server";
 
-import { promises as fs } from "fs";
-import path from "path";
-import { randomUUID } from "crypto";
-import { getProduct } from "@/data/collections";
+import { getProduct } from "@/lib/catalog";
+import { prisma } from "@/lib/prisma";
 
 export interface ReviewFormValues {
   rating: string;
@@ -21,9 +19,8 @@ export interface ReviewFormState {
   values?: ReviewFormValues;
 }
 
-// Submitted reviews wait here for the team to read them. Nothing is published automatically:
-// approved reviews are copied by hand into src/data/reviews.ts.
-const PENDING_FILE = path.join(process.cwd(), "data", "pending-reviews.json");
+// Submitted reviews are saved as "pending". Nothing is published automatically: the team sets a
+// review to "approved" in the reviews table, and only then does it show on the product page.
 
 const field = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
 
@@ -45,7 +42,7 @@ export async function submitReview(
 
   // This function can be called directly with a POST, so everything is checked again here
   const productId = field(formData, "productId");
-  if (!getProduct(productId)) {
+  if (!(await getProduct(productId))) {
     return { status: "error", message: "We could not find that product.", values };
   }
 
@@ -63,28 +60,19 @@ export async function submitReview(
   }
   if (Object.keys(errors).length > 0) return { status: "error", errors, values };
 
-  const entry = {
-    id: randomUUID(),
-    productId,
-    rating,
-    title: values.title,
-    text: values.text,
-    name: values.name,
-    location: values.location,
-    email: values.email, // kept for follow-up only, never shown on the site
-    submittedAt: new Date().toISOString(),
-    status: "pending",
-  };
-
   try {
-    await fs.mkdir(path.dirname(PENDING_FILE), { recursive: true });
-    let existing: unknown[] = [];
-    try {
-      existing = JSON.parse(await fs.readFile(PENDING_FILE, "utf8"));
-    } catch {
-      // first submission, or the file is empty
-    }
-    await fs.writeFile(PENDING_FILE, JSON.stringify([...existing, entry], null, 2));
+    await prisma.review.create({
+      data: {
+        productId,
+        rating,
+        title: values.title,
+        text: values.text,
+        name: values.name,
+        location: values.location,
+        email: values.email || null, // kept for follow-up only, never shown on the site
+        status: "pending",
+      },
+    });
   } catch {
     return {
       status: "error",

@@ -4,15 +4,14 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ProductDetail from "@/components/products/ProductDetail";
 import ScrollProgress from "@/components/motion/ScrollProgress";
-import {
-  collectionProducts,
-  getProduct,
-  getRelatedProducts,
-} from "@/data/collections";
-import { getReviews } from "@/data/reviews";
+import { getCategories, getProduct, getProducts, getRelatedProducts, getReviews } from "@/lib/catalog";
 
-export function generateStaticParams() {
-  return collectionProducts.map((product) => ({ slug: product.id }));
+// Pages are built ahead of time and refreshed from the database at most every 5 minutes.
+// Products added later are built on their first visit.
+export const revalidate = 300;
+
+export async function generateStaticParams() {
+  return (await getProducts()).map((product) => ({ slug: product.id }));
 }
 
 export async function generateMetadata({
@@ -21,7 +20,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getProduct(slug);
   if (!product) return { title: "Piece not found | Averto" };
 
   return {
@@ -37,8 +36,13 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getProduct(slug);
   if (!product) notFound();
+  const [categories, related, reviews] = await Promise.all([
+    getCategories(),
+    getRelatedProducts(product),
+    getReviews(product.id),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex flex-col pb-16 lg:pb-0">
@@ -46,8 +50,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <Navbar />
       <ProductDetail
         product={product}
-        related={getRelatedProducts(product)}
-        reviews={getReviews(product.id)}
+        category={categories.find((c) => c.id === product.category)}
+        related={related}
+        reviews={reviews}
       />
       <Footer />
     </main>

@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { CollectionProduct, ProductColor } from "@/data/collections";
-import { depositFor, MAX_QTY_PER_LINE, resolveLine } from "@/data/store";
-import { applyCoupon as checkCoupon, type Coupon } from "@/data/coupons";
+import { depositFor, MAX_QTY_PER_LINE } from "@/data/store";
+import type { Coupon } from "@/data/coupons";
+import { quoteCart, type CartQuote } from "@/app/actions/cart";
 import { parseCart, readCoupon, readRaw, sameLine, subscribe, writeCart, writeCoupon } from "@/lib/cart-store";
 import CartDrawer from "./CartDrawer";
 
@@ -27,6 +28,8 @@ interface CartContextValue {
   discount: number;
   total: number;
   deposit: number;
+  // true while the latest cart change is still being priced by the server
+  syncing: boolean;
   drawerOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
@@ -34,7 +37,7 @@ interface CartContextValue {
   setQty: (productId: string, colorId: string | undefined, qty: number) => void;
   remove: (productId: string, colorId?: string) => void;
   clear: () => void;
-  applyCoupon: (code: string) => { ok: true } | { ok: false; error: string };
+  applyCoupon: (code: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   removeCoupon: () => void;
 }
 
@@ -50,26 +53,48 @@ export default function CartProvider({ children }: { children: React.ReactNode }
   // "" on the server and during hydration, then the real cart
   const raw = useSyncExternalStore(subscribe, readRaw, () => "");
   const stored = useMemo(() => parseCart(raw), [raw]);
+  const storedCoupon = useSyncExternalStore(subscribe, readCoupon, () => "");
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // The browser only stores ids and quantities; names, photos and prices come from the server
+  const quoteKey = `${raw}|${storedCoupon}`;
+  const [quote, setQuote] = useState<{ key: string; data: CartQuote } | null>(null);
+  useEffect(() => {
+    if (stored.length === 0) return;
+    let cancelled = false;
+    quoteCart(stored, storedCoupon)
+      .then((data) => {
+        if (cancelled) return;
+        setQuote({ key: quoteKey, data });
+        // Save the cleaned-up cart (default colours filled in, removed products dropped, duplicates
+        // merged) so the +, - and remove buttons always find the line they belong to
+        const cleaned = data.lines.map((l) => ({ productId: l.productId, colorId: l.colorId, qty: l.qty }));
+        if (JSON.stringify(cleaned) !== JSON.stringify(stored)) writeCart(cleaned);
+      })
+      .catch(() => {
+        // offline or server error: keep showing the last prices; the next change tries again
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [quoteKey, stored, storedCoupon]);
+
+  const empty = stored.length === 0;
+  const syncing = !empty && quote?.key !== quoteKey;
+  const data = empty ? null : quote?.data;
 
   const lines = useMemo<ResolvedLine[]>(
     () =>
-      stored.flatMap((line) => {
-        const resolved = resolveLine(line.productId, line.colorId);
-        if (!resolved) return [];
-        return [
-          {
-            key: `${line.productId}:${resolved.color?.id ?? ""}`,
-            product: resolved.product,
-            color: resolved.color,
-            qty: line.qty,
-            unit: resolved.unit,
-            originalUnit: resolved.originalUnit,
-            total: resolved.unit * line.qty,
-          },
-        ];
-      }),
-    [stored],
+      (data?.lines ?? []).map((l) => ({
+        key: `${l.productId}:${l.colorId ?? ""}`,
+        product: l.product,
+        color: l.color,
+        qty: l.qty,
+        unit: l.unit,
+        originalUnit: l.originalUnit,
+        total: l.unit * l.qty,
+      })),
+    [data],
   );
 
   const subtotal = lines.reduce((sum, l) => sum + l.total, 0);
@@ -79,25 +104,18 @@ export default function CartProvider({ children }: { children: React.ReactNode }
     0,
   );
 
-  // The coupon is re-checked against the cart every time, so a coupon that stops applying
+  // The server re-checks the coupon against the cart every time, so a coupon that stops applying
   // (for example the cart drops below its minimum) is switched off instead of discounting wrongly
-  const storedCoupon = useSyncExternalStore(subscribe, readCoupon, () => "");
-  const couponResult = storedCoupon ? checkCoupon(storedCoupon, subtotal) : null;
-  const coupon = couponResult?.ok ? couponResult.coupon : null;
-  const discount = couponResult?.ok ? couponResult.discount : 0;
+  const coupon = data?.coupon ?? null;
+  const discount = data?.discount ?? 0;
   const couponNotice =
-    couponResult && !couponResult.ok ? `${storedCoupon} no longer applies. ${couponResult.error}` : "";
+    storedCoupon && data?.couponError ? `${storedCoupon} no longer applies. ${data.couponError}` : "";
   const total = subtotal - discount;
-  const count = lines.reduce((sum, l) => sum + l.qty, 0);
+  // Until the first prices arrive, count straight from storage so the cart badge never flickers to 0
+  const count = (lines.length ? lines : stored).reduce((sum, l) => sum + l.qty, 0);
 
   // Always start from what is stored right now, so two quick clicks never overwrite each other
-  // Colour ids are normalised the same way the drawer shows them (a missing or unknown colour means the
-  // product's default one), so the +, - and remove buttons always find the line they belong to
-  const current = () =>
-    parseCart(readRaw()).flatMap((line) => {
-      const resolved = resolveLine(line.productId, line.colorId);
-      return resolved ? [{ ...line, colorId: resolved.color?.id }] : [];
-    });
+  const current = () => parseCart(readRaw());
 
   const add = useCallback((productId: string, colorId?: string, qty = 1) => {
     const lines = current();
@@ -124,11 +142,16 @@ export default function CartProvider({ children }: { children: React.ReactNode }
     writeCoupon("");
   }, []);
 
-  const applyCoupon = (code: string): { ok: true } | { ok: false; error: string } => {
-    const result = checkCoupon(code, subtotal);
-    if (!result.ok) return result;
-    writeCoupon(result.coupon.code);
-    return { ok: true };
+  const applyCoupon = async (code: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+    if (!code.trim()) return { ok: false, error: "Enter a coupon code." };
+    try {
+      const result = await quoteCart(current(), code);
+      if (!result.coupon) return { ok: false, error: result.couponError || "That coupon code is not valid." };
+      writeCoupon(result.coupon.code);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "We could not check that coupon. Please try again." };
+    }
   };
   const removeCoupon = () => writeCoupon("");
 
@@ -142,6 +165,7 @@ export default function CartProvider({ children }: { children: React.ReactNode }
     discount,
     total,
     deposit: depositFor(total),
+    syncing,
     drawerOpen,
     openDrawer: () => setDrawerOpen(true),
     closeDrawer: () => setDrawerOpen(false),

@@ -1,5 +1,5 @@
-// SAMPLE COUPONS, written only so the coupon box can be tried out. Replace them with the real offers
-// (or move them to the database) before launch. The server checks every coupon again at checkout.
+// Coupon rules. The coupons themselves live in the database (coupons table) and are only ever read
+// on the server, so the list of codes never reaches the browser.
 
 export interface Coupon {
   code: string; // stored upper case
@@ -10,34 +10,14 @@ export interface Coupon {
   maxDiscount?: number; // cap for percent coupons, in rupees
 }
 
-export const coupons: Coupon[] = [
-  {
-    code: "WELCOME10",
-    description: "10% off your order",
-    type: "percent",
-    value: 10,
-    maxDiscount: 50000,
-  },
-  {
-    code: "AVERTO5000",
-    description: "₹5,000 off orders above ₹1,00,000",
-    type: "flat",
-    value: 5000,
-    minOrder: 100000,
-  },
-];
-
 export type CouponResult =
   | { ok: true; coupon: Coupon; discount: number }
   | { ok: false; error: string };
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
-export function applyCoupon(rawCode: string, subtotal: number): CouponResult {
-  const code = String(rawCode ?? "").trim().toUpperCase();
-  if (!code) return { ok: false, error: "Enter a coupon code." };
-
-  const coupon = coupons.find((c) => c.code === code);
+// `coupon` is what the database found for the code (undefined when none matched or it is switched off)
+export function evaluateCoupon(coupon: Coupon | undefined, subtotal: number): CouponResult {
   if (!coupon) return { ok: false, error: "That coupon code is not valid." };
 
   if (coupon.minOrder && subtotal < coupon.minOrder) {

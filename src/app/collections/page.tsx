@@ -5,7 +5,7 @@ import CollectionsHero from "@/components/collections/CollectionsHero";
 import CollectionsBrowser from "@/components/collections/CollectionsBrowser";
 import CustomPieceCta from "@/components/collections/CustomPieceCta";
 import ScrollProgress from "@/components/motion/ScrollProgress";
-import { isCategoryId } from "@/data/collections";
+import { getCategories, getProducts } from "@/lib/catalog";
 
 export const metadata: Metadata = {
   title: "Collections | Averto Bespoke Slate & Luxury Furniture",
@@ -18,17 +18,17 @@ export default async function CollectionsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { category } = await searchParams;
+  const [{ category }, categories, products] = await Promise.all([searchParams, getCategories(), getProducts()]);
   // Accepts ?category=dining or ?category=dining,sofas; unknown names are ignored
   const requested = (Array.isArray(category) ? category.join(",") : category) ?? "";
-  const initialCategories = [...new Set(requested.split(","))].filter(isCategoryId);
+  const initialCategories = [...new Set(requested.split(","))].filter((id) => categories.some((c) => c.id === id));
 
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex flex-col">
       <ScrollProgress />
       <Navbar />
       <CollectionsHero />
-      <CollectionsBrowser initialCategories={initialCategories} />
+      <CollectionsBrowser initialCategories={initialCategories} categories={categories} products={products} />
       <CustomPieceCta />
       <Footer />
     </main>
