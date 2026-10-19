@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, ShoppingBag } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
 interface ShowcaseSlide {
@@ -144,7 +144,7 @@ export default function InteractiveShowcaseSlider() {
           {/* Left Circular Semi-Circle Texture Frame with Roll-in & Scale Animation */}
           <div className="absolute -left-28 sm:-left-36 lg:-left-44 top-1/2 -translate-y-1/2 w-72 h-72 sm:w-96 sm:h-96 lg:w-[480px] lg:h-[480px] rounded-full overflow-hidden border-4 sm:border-8 border-white/20 shadow-[0_0_60px_rgba(0,0,0,0.6)] z-20 group bg-stone-900 flex-shrink-0">
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div
+              <m.div
                 key={current.id + "-circle"}
                 initial={{ opacity: 0, scale: 0.85, rotate: direction * 25 }}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -160,7 +160,7 @@ export default function InteractiveShowcaseSlider() {
                   sizes="(max-width: 1024px) 380px, 480px"
                   priority
                 />
-              </motion.div>
+              </m.div>
             </AnimatePresence>
             {/* Subtle Vignette on Circle Edge */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/20 pointer-events-none" />
@@ -175,7 +175,7 @@ export default function InteractiveShowcaseSlider() {
             {/* Center Content Column with Staggered Fade-Slide Animation */}
             <div className="lg:col-span-5 pl-24 sm:pl-32 lg:pl-4 pr-2 flex flex-col justify-center min-h-[300px]">
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div
+                <m.div
                   key={current.id + "-text"}
                   initial={{ opacity: 0, y: direction * 22 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -184,40 +184,40 @@ export default function InteractiveShowcaseSlider() {
                   className="flex flex-col justify-center"
                 >
                   {/* Category / Sub-tag */}
-                  <motion.p
+                  <m.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 0.7 }}
                     transition={{ delay: 0.05, duration: 0.4 }}
                     className="text-xs uppercase font-sans tracking-[0.25em] text-white/70 font-semibold mb-3"
                   >
                     {current.category}
-                  </motion.p>
+                  </m.p>
 
                   {/* Title */}
-                  <motion.h3
+                  <m.h3
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.08, duration: 0.5 }}
                     className="text-3xl sm:text-5xl lg:text-[54px] font-sans font-black tracking-tight leading-[1.05] uppercase text-white mb-2"
                   >
                     {current.title}
-                  </motion.h3>
+                  </m.h3>
 
                   {/* Subtitle */}
-                  <motion.p
+                  <m.p
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 0.9, x: 0 }}
                     transition={{ delay: 0.12, duration: 0.5 }}
                     className="font-serif italic text-2xl sm:text-4xl lg:text-[42px] leading-tight text-white/90 mb-5"
                   >
                     {current.subtitle}
-                  </motion.p>
+                  </m.p>
 
                   {/* 1-sentence craft summary */}
                   <p className="text-xs sm:text-sm text-white/75 line-clamp-2 max-w-sm mb-7 font-sans leading-relaxed">
                     {current.description}
                   </p>
-                </motion.div>
+                </m.div>
               </AnimatePresence>
 
               {/* Action Buttons Row */}
@@ -254,7 +254,7 @@ export default function InteractiveShowcaseSlider() {
             <div className="lg:col-span-4 flex items-center justify-center relative mt-8 lg:mt-0 h-[280px] sm:h-[360px] lg:h-[420px]">
               <div className="relative w-full h-full max-w-[420px] flex items-center justify-center">
                 <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
+                  <m.div
                     key={current.id + "-product"}
                     initial={{ opacity: 0, x: direction * 45, scale: 0.92, rotate: direction * 3 }}
                     animate={{ opacity: 1, x: 0, scale: 1, rotate: 0 }}
@@ -267,7 +267,7 @@ export default function InteractiveShowcaseSlider() {
                     className="relative w-full h-full flex items-center justify-center"
                   >
                     {/* Floating subtle ambient hover micro-animation */}
-                    <motion.div
+                    <m.div
                       animate={{ y: [0, -7, 0] }}
                       transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                       className="relative w-full h-full [mix-blend-mode:multiply] contrast-[1.05] brightness-[1.01]"
@@ -280,8 +280,8 @@ export default function InteractiveShowcaseSlider() {
                         sizes="(max-width: 640px) 260px, (max-width: 1024px) 360px, 420px"
                         priority
                       />
-                    </motion.div>
-                  </motion.div>
+                    </m.div>
+                  </m.div>
                 </AnimatePresence>
               </div>
             </div>

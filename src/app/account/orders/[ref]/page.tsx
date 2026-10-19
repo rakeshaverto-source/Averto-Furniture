@@ -8,7 +8,9 @@ import { balanceDue, productPhotos } from "@/lib/account";
 import { razorpayKeys } from "@/lib/razorpay";
 import { formatPrice, WHATSAPP_NUMBER } from "@/data/collections";
 import { BUSINESS } from "@/data/business";
+import { PAYMENT_METHOD_NAME } from "@/data/store";
 import { formatDate, formatDateTime } from "@/lib/admin-format";
+import { addressLines } from "@/lib/address";
 import OrderTimeline from "@/components/account/OrderTimeline";
 import PayBalanceButton from "@/components/account/PayBalanceButton";
 import AccountReviewForm from "@/components/account/AccountReviewForm";
@@ -17,7 +19,10 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
   const { ref } = await params;
   const customer = await requireCustomer(`/account/orders/${ref}`);
   // Only the customer's own orders
-  const order = await prisma.order.findFirst({ where: { ref, userId: customer.id }, include: { items: true } });
+  const order = await prisma.order.findFirst({
+    where: { ref, userId: customer.id },
+    include: { items: true, events: { orderBy: { createdAt: "asc" } } },
+  });
   if (!order) notFound();
 
   const [photos, reviewed] = await Promise.all([
@@ -54,7 +59,39 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
       </div>
 
       <section className="rounded-sm bg-white border border-stone-200 p-5 sm:p-7">
-        <OrderTimeline status={order.fulfillment} />
+        <OrderTimeline
+          status={order.fulfillment}
+          // the latest time each step was reached; "Order placed" is when the order came in
+          dates={{ new: order.createdAt, ...Object.fromEntries(order.events.map((e) => [e.fulfillment, e.createdAt])) }}
+        />
+        {!cancelled && !delivered && (order.expectedDelivery || order.courierName || order.trackingNumber) && (
+          <div className="mt-6 border-t border-stone-200 pt-5 flex flex-wrap gap-x-10 gap-y-3 text-sm justify-center text-center">
+            {order.expectedDelivery && (
+              <p>
+                <span className="block text-xs uppercase tracking-wider text-stone-500">Expected delivery</span>
+                <span className="text-stone-900 font-medium">{formatDate(order.expectedDelivery)}</span>
+              </p>
+            )}
+            {(order.courierName || order.trackingNumber) && (
+              <p>
+                <span className="block text-xs uppercase tracking-wider text-stone-500">Shipped with</span>
+                <span className="text-stone-900">
+                  {[order.courierName, order.trackingNumber && `Tracking no. ${order.trackingNumber}`].filter(Boolean).join(" · ")}
+                </span>
+              </p>
+            )}
+            {order.trackingUrl && (
+              <a
+                href={order.trackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="self-center rounded-sm border border-stone-300 px-4 py-2 font-medium text-stone-900 hover:border-stone-900"
+              >
+                Track your order ↗
+              </a>
+            )}
+          </div>
+        )}
       </section>
 
       <div className="grid xl:grid-cols-[1fr_20rem] gap-6 items-start">
@@ -124,13 +161,19 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
             <h3 className="font-medium text-stone-900">Payment</h3>
             <dl className="mt-3 space-y-2">
               <div className="flex justify-between gap-3">
-                <dt className="text-stone-600">Advance ({order.depositPercent}%)</dt>
+                <dt className="text-stone-600">Method</dt>
+                <dd className="text-stone-900 text-right">{PAYMENT_METHOD_NAME[order.paymentMethod]}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-stone-600">
+                  {order.paymentMethod === "full" ? "Online payment" : `Advance (${order.depositPercent}%)`}
+                </dt>
                 <dd className={advancePaid ? "text-emerald-800" : "text-stone-500"}>
                   {advancePaid ? `Paid ${formatPrice(order.deposit)}` : formatPrice(order.deposit)}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-stone-600">Balance</dt>
+                <dt className="text-stone-600">{order.paymentMethod === "cod" ? "Cash on delivery" : "Balance"}</dt>
                 <dd className={order.balancePaid ? "text-emerald-800" : "text-stone-900 font-medium"}>
                   {order.balancePaid
                     ? `Paid${order.balancePaidAt ? ` on ${formatDate(order.balancePaidAt)}` : ""}`
@@ -153,7 +196,9 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
               !cancelled && (
                 <p className="mt-3 text-xs text-stone-500">
                   {advancePaid
-                    ? "You can pay the balance before delivery. Our team will share the details."
+                    ? order.paymentMethod === "cod"
+                      ? "Please keep this amount ready in cash for the day of delivery."
+                      : "You can pay the balance before delivery. Our team will share the details."
                     : "Our team will call you to arrange the advance and confirm your order."}
                 </p>
               )
@@ -163,11 +208,7 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
           <section className="rounded-sm bg-white border border-stone-200 p-5 text-sm">
             <h3 className="font-medium text-stone-900">Delivering to</h3>
             <p className="mt-2 text-stone-900">{order.customerName}</p>
-            <p className="text-stone-600 whitespace-pre-line">
-              {order.address}
-              {"\n"}
-              {order.city}, {order.state} {order.pincode}
-            </p>
+            <p className="text-stone-600 whitespace-pre-line">{addressLines(order).join("\n")}</p>
             <p className="mt-1 text-stone-500">{order.customerPhone}</p>
           </section>
 

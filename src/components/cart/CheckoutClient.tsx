@@ -1,27 +1,31 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/data/collections";
-import { DEPOSIT_PERCENT } from "@/data/store";
+import { PAYMENT_METHODS, depositFor, percentFor, type PaymentMethod } from "@/data/store";
 import {
   confirmPayment,
   createOrder,
   type CheckoutCustomer,
   type CreateOrderResult,
 } from "@/app/actions/checkout";
-import { lookupPincode } from "@/app/actions/pincode";
 import { loadRazorpay, type RazorpayResponse } from "@/lib/razorpay-client";
 import { useCart } from "./CartProvider";
 import CouponBox from "./CouponBox";
+import AddressForm, { type AddressValues } from "@/components/account/AddressForm";
+import { addressLines } from "@/lib/address";
 
 const emptyCustomer: CheckoutCustomer = {
   name: "",
   phone: "",
   email: "",
   address: "",
+  locality: "",
+  landmark: "",
   city: "",
+  tehsil: "",
   state: "",
   pincode: "",
   notes: "",
@@ -35,6 +39,7 @@ interface Done {
   paid: boolean;
   deposit: number;
   total: number;
+  paymentMethod: PaymentMethod;
   name: string;
   phone: string;
 }
@@ -47,7 +52,10 @@ interface SavedAddress {
   name: string;
   phone: string;
   address: string;
+  locality: string;
+  landmark: string;
   city: string;
+  tehsil: string;
   state: string;
   pincode: string;
 }
@@ -59,48 +67,47 @@ export default function CheckoutClient({
   prefill: Partial<CheckoutCustomer> & { email: string };
   addresses?: SavedAddress[];
 }) {
-  const { lines, subtotal, savings, discount, total, coupon, deposit, syncing, clear } = useCart();
+  const { lines, subtotal, savings, discount, total, coupon, syncing, clear } = useCart();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("advance");
+  // Shown here only; the server works out the same amount again from its own prices
+  const payNow = depositFor(total, paymentMethod);
   const [customer, setCustomer] = useState<CheckoutCustomer>({ ...emptyCustomer, ...prefill, notes: "" });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CheckoutCustomer, string>>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done | null>(null);
-  const [pinHint, setPinHint] = useState<{ kind: "loading" | "found" | "missing"; text: string } | null>(null);
-  const latestPin = useRef("");
-  const autoFilled = useRef<{ city: string; state: string } | null>(null);
+  // Saved addresses are picked like cards; a new or edited one is saved first, then selected.
+  // With none saved yet, the new-address form is open from the start.
+  const [saved, setSaved] = useState<SavedAddress[]>(addresses);
+  const [selectedId, setSelectedId] = useState(addresses[0]?.id ?? "");
+  const [editing, setEditing] = useState<"new" | string | null>(addresses.length ? null : "new");
+
+  const selectAddress = (a: SavedAddress) => {
+    setSelectedId(a.id);
+    setCustomer((c) => ({
+      ...c,
+      name: a.name,
+      phone: a.phone,
+      address: a.address,
+      locality: a.locality,
+      landmark: a.landmark,
+      city: a.city,
+      tehsil: a.tehsil,
+      state: a.state,
+      pincode: a.pincode,
+    }));
+    setFieldErrors({});
+  };
+
+  const onAddressSaved = (values: AddressValues & { id: string }) => {
+    const a: SavedAddress = { ...values, locality: values.locality ?? "", landmark: values.landmark ?? "", tehsil: values.tehsil ?? "" };
+    setSaved((list) => (list.some((x) => x.id === a.id) ? list.map((x) => (x.id === a.id ? a : x)) : [...list, a]));
+    selectAddress(a);
+    setEditing(null);
+  };
 
   const update = (key: keyof CheckoutCustomer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setCustomer((c) => ({ ...c, [key]: e.target.value }));
-
-  // Typing a full pincode fills in the city and state (still editable afterwards)
-  const onPincode = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const pin = e.target.value.replace(/\D/g, "").slice(0, 6);
-    latestPin.current = pin;
-    setCustomer((c) => ({ ...c, pincode: pin }));
-    if (pin.length < 6) {
-      setPinHint(null);
-      return;
-    }
-    setPinHint({ kind: "loading", text: "Looking up your pincode…" });
-    const previousAuto = autoFilled.current;
-    const result = await lookupPincode(pin);
-    if (latestPin.current !== pin) return; // a newer pincode was typed meanwhile
-    if (result.ok) {
-      autoFilled.current = { city: result.city, state: result.state };
-      setCustomer((c) => ({ ...c, city: result.city, state: result.state }));
-      setFieldErrors((f) => ({ ...f, city: undefined, state: undefined, pincode: undefined }));
-      setPinHint({ kind: "found", text: `Areas for ${pin}: ${result.areas.join(", ")}` });
-    } else {
-      // Drop what an earlier pincode filled in (but never anything the customer typed themselves)
-      setCustomer((c) => ({
-        ...c,
-        city: previousAuto && c.city === previousAuto.city ? "" : c.city,
-        state: previousAuto && c.state === previousAuto.state ? "" : c.state,
-      }));
-      autoFilled.current = null;
-      setPinHint({ kind: "missing", text: result.error });
-    }
-  };
 
   const finish = (order: Extract<CreateOrderResult, { ok: true }>, paid: boolean) => {
     setDone({
@@ -108,6 +115,7 @@ export default function CheckoutClient({
       paid,
       deposit: order.deposit,
       total: order.total,
+      paymentMethod: order.paymentMethod,
       name: customer.name,
       phone: customer.phone,
     });
@@ -125,7 +133,8 @@ export default function CheckoutClient({
       currency: "INR",
       order_id: order.razorpayOrderId,
       name: "Averto Furniture",
-      description: `Advance for order ${order.ref}`,
+      description:
+        order.paymentMethod === "full" ? `Payment for order ${order.ref}` : `Advance for order ${order.ref}`,
       prefill: { name: customer.name, email: customer.email, contact: customer.phone },
       theme: { color: "#1A1A18" },
       handler: async (response: RazorpayResponse) => {
@@ -156,6 +165,7 @@ export default function CheckoutClient({
       lines.map((l) => ({ productId: l.product.id, colorId: l.color?.id, qty: l.qty })),
       customer,
       coupon?.code,
+      paymentMethod,
     );
 
     if (!result.ok) {
@@ -178,10 +188,15 @@ export default function CheckoutClient({
         <p className="text-[11px] uppercase tracking-[0.25em] text-[#A66E38] font-semibold">Order {done.ref}</p>
         <h1 className="mt-4 font-serif text-4xl sm:text-5xl text-[#111110]">Thank you, {done.name.split(" ")[0]}</h1>
         <p className="mt-5 text-stone-700 leading-relaxed">
-          {done.paid
-            ? `We have received your advance of ${formatPrice(done.deposit)}. Our team will call you on ${done.phone} to confirm the size, finish and delivery of your order.`
-            : `We have received your order. Our team will call you on ${done.phone} to confirm the size and finish and to collect the advance of ${formatPrice(done.deposit)}.`}
+          {!done.paid
+            ? `We have received your order. Our team will call you on ${done.phone} to confirm the size and finish and to collect the advance of ${formatPrice(done.deposit)}.`
+            : `We have received your ${done.paymentMethod === "full" ? "payment" : "advance"} of ${formatPrice(done.deposit)}. Our team will call you on ${done.phone} to confirm the size, finish and delivery of your order.`}
         </p>
+        {done.paymentMethod === "cod" && (
+          <p className="mt-2 text-sm text-stone-700">
+            Please keep {formatPrice(done.total - done.deposit)} ready in cash for the day of delivery.
+          </p>
+        )}
         <p className="mt-2 text-sm text-stone-500">Order total: {formatPrice(done.total)}</p>
         <Link
           href="/collections"
@@ -227,6 +242,7 @@ export default function CheckoutClient({
         onChange={update(key)}
         className={inputClass}
         aria-invalid={!!fieldErrors[key]}
+        form="checkout-form"
         {...props}
       />
       {fieldErrors[key] && <p className="mt-1.5 text-xs text-red-700">{fieldErrors[key]}</p>}
@@ -235,7 +251,10 @@ export default function CheckoutClient({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
-      <form onSubmit={submit} noValidate className="lg:col-span-7 space-y-8">
+      {/* A div, not the form itself, so the address form can sit inside without nesting forms;
+          the fields join the order form through form="checkout-form" */}
+      <div className="lg:col-span-7 space-y-8">
+        <form id="checkout-form" onSubmit={submit} noValidate hidden />
         <h1 className="font-serif text-4xl sm:text-5xl text-[#111110]">Checkout</h1>
 
         {error && (
@@ -259,63 +278,109 @@ export default function CheckoutClient({
 
         <section className="space-y-5">
           <h2 className="text-xs uppercase tracking-[0.2em] font-bold text-stone-900">Delivery address</h2>
-          {addresses.length > 1 && (
-            <div>
-              <label htmlFor="co-saved" className="block text-sm font-medium text-stone-900 mb-2">
-                Use a saved address
-              </label>
-              <select
-                id="co-saved"
-                defaultValue={addresses[0].id}
-                onChange={(e) => {
-                  const a = addresses.find((x) => x.id === e.target.value);
-                  if (!a) return;
-                  setCustomer((c) => ({
-                    ...c,
-                    name: a.name,
-                    phone: a.phone,
-                    address: a.address,
-                    city: a.city,
-                    state: a.state,
-                    pincode: a.pincode,
-                  }));
-                  setFieldErrors({});
+          {saved.length === 0 ? (
+            <div className="space-y-3">
+              <AddressForm
+                address={{
+                  label: "Home",
+                  name: customer.name,
+                  phone: customer.phone,
+                  address: customer.address,
+                  locality: customer.locality,
+                  landmark: customer.landmark,
+                  city: customer.city,
+                  tehsil: customer.tehsil,
+                  state: customer.state,
+                  pincode: customer.pincode,
                 }}
-                className={inputClass}
-              >
-                {addresses.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.label ? `${a.label}: ` : ""}
-                    {a.address}, {a.city} {a.pincode}
-                  </option>
-                ))}
-              </select>
+                onSaved={onAddressSaved}
+                submitLabel="Save and deliver here"
+              />
+              <p className="text-xs text-stone-500">This address is saved to your account for next time.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {saved.map((a) =>
+                editing === a.id ? (
+                  <div key={a.id} className="rounded-sm border border-stone-900 p-4 sm:p-5">
+                    <p className="text-sm font-medium text-stone-900 mb-4">Edit address</p>
+                    <AddressForm
+                      address={a}
+                      onSaved={onAddressSaved}
+                      onCancel={() => setEditing(null)}
+                      submitLabel="Save and deliver here"
+                    />
+                  </div>
+                ) : (
+                  <label
+                    key={a.id}
+                    className={`flex items-start gap-3 rounded-sm border px-4 py-4 cursor-pointer transition-colors ${
+                      selectedId === a.id ? "border-stone-900 bg-[#FAF8F5]" : "border-stone-300 hover:border-stone-500"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="savedAddress"
+                      checked={selectedId === a.id}
+                      onChange={() => selectAddress(a)}
+                      className="mt-1 w-4 h-4 accent-[#1A1A18]"
+                    />
+                    <span className="flex-1 min-w-0 text-sm">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-stone-900">{a.name}</span>
+                        {a.label && (
+                          <span className="rounded-sm bg-stone-200 px-2 py-0.5 text-[11px] uppercase tracking-wide text-stone-700">
+                            {a.label}
+                          </span>
+                        )}
+                        <span className="text-stone-600">{a.phone}</span>
+                      </span>
+                      <span className="block mt-1 text-stone-600 leading-relaxed">{addressLines(a).join(", ")}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setEditing(a.id);
+                      }}
+                      className="shrink-0 text-sm text-stone-900 underline underline-offset-4 cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  </label>
+                ),
+              )}
+
+              {editing === "new" ? (
+                <div className="rounded-sm border border-stone-900 p-4 sm:p-5">
+                  <p className="text-sm font-medium text-stone-900 mb-4">Add a new address</p>
+                  <AddressForm
+                    address={{ label: "", name: customer.name, phone: customer.phone, address: "", city: "", state: "", pincode: "" }}
+                    onSaved={onAddressSaved}
+                    onCancel={() => setEditing(null)}
+                    submitLabel="Save and deliver here"
+                  />
+                </div>
+              ) : (
+                saved.length < 10 && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing("new")}
+                    className="w-full rounded-sm border border-dashed border-stone-400 px-4 py-3.5 text-sm font-medium text-stone-900 hover:border-stone-900 cursor-pointer transition-colors"
+                  >
+                    + Add a new address
+                  </button>
+                )
+              )}
+              {editing !== null && (
+                <p className="text-xs text-stone-500">Save or cancel the address above to continue to payment.</p>
+              )}
             </div>
           )}
-          {field("address", "Address", { autoComplete: "street-address" })}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {field("city", "City", { autoComplete: "address-level2" })}
-            {field("state", "State", { autoComplete: "address-level1" })}
-            <div>
-              <label htmlFor="co-pincode" className="block text-sm font-medium text-stone-900 mb-2">
-                Pincode
-              </label>
-              <input
-                id="co-pincode"
-                value={customer.pincode}
-                onChange={onPincode}
-                inputMode="numeric"
-                maxLength={6}
-                autoComplete="postal-code"
-                className={inputClass}
-                aria-invalid={!!fieldErrors.pincode}
-              />
-              {fieldErrors.pincode && <p className="mt-1.5 text-xs text-red-700">{fieldErrors.pincode}</p>}
-            </div>
-          </div>
-          {pinHint && (
-            <p className={`text-xs ${pinHint.kind === "missing" ? "text-amber-800" : "text-stone-500"}`}>
-              {pinHint.text}
+          {saved.length > 0 && (fieldErrors.address || fieldErrors.city || fieldErrors.state || fieldErrors.pincode) && (
+            <p className="text-xs text-red-700">
+              {fieldErrors.address ?? fieldErrors.city ?? fieldErrors.state ?? fieldErrors.pincode} Please edit the selected
+              address.
             </p>
           )}
         </section>
@@ -335,14 +400,45 @@ export default function CheckoutClient({
           />
         </section>
 
+        <fieldset className="space-y-3">
+          <legend className="text-xs uppercase tracking-[0.2em] font-bold text-stone-900 mb-4">Payment</legend>
+          {PAYMENT_METHODS.map((m) => (
+            <label
+              key={m.id}
+              className={`flex items-start gap-3 rounded-sm border px-4 py-3.5 cursor-pointer transition-colors ${
+                paymentMethod === m.id ? "border-stone-900 bg-[#FAF8F5]" : "border-stone-300 hover:border-stone-500"
+              }`}
+            >
+              <input
+                type="radio"
+                name="paymentMethod"
+                value={m.id}
+                checked={paymentMethod === m.id}
+                onChange={() => setPaymentMethod(m.id)}
+                className="mt-1 w-4 h-4 accent-[#1A1A18]"
+              />
+              <span className="flex-1">
+                <span className="flex justify-between gap-3 text-sm font-medium text-stone-900">
+                  <span>{m.label}</span>
+                  <span className="shrink-0">{formatPrice(depositFor(total, m.id))} now</span>
+                </span>
+                <span className="block mt-1 text-xs text-stone-500 leading-relaxed">{m.note}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
         <button
           type="submit"
-          disabled={busy || syncing}
+          form="checkout-form"
+          disabled={busy || syncing || editing !== null}
           className="w-full sm:w-auto px-10 py-4 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] disabled:opacity-60 text-white text-sm font-medium cursor-pointer transition-colors"
         >
-          {busy ? "Please wait…" : `Pay advance ${formatPrice(deposit)}`}
+          {busy
+            ? "Please wait…"
+            : `${paymentMethod === "full" ? "Pay" : "Pay advance"} ${formatPrice(payNow)}`}
         </button>
-      </form>
+      </div>
 
       <aside className="lg:col-span-5 lg:sticky lg:top-24 rounded-sm border border-stone-200 bg-[#FAF8F5] p-6 sm:p-8">
         <h2 className="font-serif text-2xl text-[#111110]">Order summary</h2>
@@ -405,13 +501,17 @@ export default function CheckoutClient({
             <dd className="text-stone-900">{formatPrice(total)}</dd>
           </div>
           <div className="flex justify-between items-baseline">
-            <dt className="font-medium text-stone-900">Advance today ({DEPOSIT_PERCENT}%)</dt>
-            <dd className="font-serif text-2xl text-stone-950">{formatPrice(deposit)}</dd>
+            <dt className="font-medium text-stone-900">
+              {paymentMethod === "full" ? "To pay today" : `Advance today (${percentFor(paymentMethod)}%)`}
+            </dt>
+            <dd className="font-serif text-2xl text-stone-950">{formatPrice(payNow)}</dd>
           </div>
-          <div className="flex justify-between text-stone-600">
-            <dt>Balance before delivery</dt>
-            <dd className="text-stone-900">{formatPrice(total - deposit)}</dd>
-          </div>
+          {paymentMethod !== "full" && (
+            <div className="flex justify-between text-stone-600">
+              <dt>{paymentMethod === "cod" ? "Cash on delivery" : "Balance before delivery"}</dt>
+              <dd className="text-stone-900">{formatPrice(total - payNow)}</dd>
+            </div>
+          )}
         </dl>
         <p className="mt-4 text-xs text-stone-500 leading-relaxed">
           Every piece is made to order. Our team confirms the size and finish with you before work begins.

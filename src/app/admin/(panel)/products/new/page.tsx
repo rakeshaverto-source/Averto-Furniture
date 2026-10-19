@@ -16,7 +16,9 @@ export default async function NewProductPage() {
         ← All products
       </Link>
       <h1 className="mt-2 font-serif text-3xl text-[#111110]">Add product</h1>
-      <p className="mt-1 mb-8 text-sm text-stone-500">Photos can be added once the product is created.</p>
+      <p className="mt-1 mb-6 text-sm text-stone-500">
+        Fill in the steps and press &ldquo;Create product&rdquo;. Photos are added right after.
+      </p>
       <ProductForm categories={categories} />
     </div>
   );

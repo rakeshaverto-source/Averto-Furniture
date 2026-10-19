@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCustomer } from "@/lib/customer-auth";
 import { deleteAddress, setDefaultAddress } from "@/app/actions/account-data";
 import AddressForm from "@/components/account/AddressForm";
+import { addressLines } from "@/lib/address";
 import ConfirmButton from "@/components/admin/ConfirmButton";
 
 export default async function AddressesPage() {
@@ -37,7 +38,7 @@ export default async function AddressesPage() {
               </div>
               <p className="mt-3 text-sm text-stone-900">{a.name}</p>
               <p className="text-sm text-stone-600">
-                {a.address}, {a.city}, {a.state} {a.pincode}
+                {addressLines(a).join(", ")}
               </p>
               <p className="text-sm text-stone-500">{a.phone}</p>
 

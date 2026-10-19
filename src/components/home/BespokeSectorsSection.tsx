@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { ArrowUpRight, MessageCircle } from "lucide-react";
 import { WHATSAPP_NUMBER } from "@/data/collections";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
 interface SectorProject {
@@ -96,7 +96,7 @@ export default function BespokeSectorsSection() {
       <div className="max-w-7xl mx-auto">
         
         {/* Header with smooth scroll reveal */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
@@ -109,7 +109,7 @@ export default function BespokeSectorsSection() {
           <p className="text-sm sm:text-base text-stone-600 font-sans font-normal leading-relaxed mt-3 max-w-2xl">
             Tell us the room and its measurements. We make the pieces to fit, in the materials you choose.
           </p>
-        </motion.div>
+        </m.div>
 
         {/* Sector Filter Tabs */}
         <div className="flex items-center gap-6 overflow-x-auto mb-8 sm:mb-10 scrollbar-none border-b border-stone-200">
@@ -130,7 +130,7 @@ export default function BespokeSectorsSection() {
         </div>
 
         {/* Active Sector Showcase Stage with Scroll Entrance */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
@@ -200,7 +200,7 @@ export default function BespokeSectorsSection() {
             />
           </div>
 
-        </motion.div>
+        </m.div>
 
       </div>
     </section>

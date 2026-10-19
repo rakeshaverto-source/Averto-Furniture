@@ -7,10 +7,15 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slug";
 import { FULFILLMENT } from "@/lib/admin-format";
 import { normaliseEmail } from "@/data/coupons";
-import type { FulfillmentStatus } from "@/generated/prisma/client";
+import type { FulfillmentStatus, Prisma } from "@/generated/prisma/client";
 
 const text = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
 const refreshAdmin = () => revalidatePath("/admin", "layout");
+// Order changes show on the customer's "My account" pages too
+const refreshOrders = () => {
+  refreshAdmin();
+  revalidatePath("/account", "layout");
+};
 
 export interface FormState {
   error?: string;
@@ -19,27 +24,131 @@ export interface FormState {
 
 // ─── Orders ─────────────────────────────────────────────────────────────────
 
+const isFulfillment = (value: string): value is FulfillmentStatus => FULFILLMENT.some((f) => f.value === value);
+
+// Saves an order and, when its status changes, records when that happened for the order history
+async function saveOrderChange(
+  order: { id: string; fulfillment: FulfillmentStatus },
+  data: Prisma.OrderUpdateInput & { fulfillment?: FulfillmentStatus },
+) {
+  const changed = data.fulfillment !== undefined && data.fulfillment !== order.fulfillment;
+  await prisma.$transaction([
+    prisma.order.update({ where: { id: order.id }, data }),
+    ...(changed ? [prisma.orderEvent.create({ data: { orderId: order.id, fulfillment: data.fulfillment! } })] : []),
+  ]);
+}
+
 export async function updateOrder(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
   const id = text(formData, "id");
-  const fulfillment = text(formData, "fulfillment") as FulfillmentStatus;
-  if (!FULFILLMENT.some((f) => f.value === fulfillment)) return { error: "Choose a status." };
+  const fulfillment = text(formData, "fulfillment");
+  if (!isFulfillment(fulfillment)) return { error: "Choose a status." };
   const balancePaid = formData.get("balancePaid") === "on";
   const adminNote = text(formData, "adminNote").slice(0, 2000);
+  const expected = text(formData, "expectedDelivery");
+  if (expected && !/^\d{4}-\d{2}-\d{2}$/.test(expected)) return { error: "Enter a valid delivery date." };
+  const trackingUrl = text(formData, "trackingUrl").slice(0, 500);
+  if (trackingUrl && !/^https?:\/\//i.test(trackingUrl)) return { error: "The tracking link should start with https://" };
 
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order) return { error: "This order no longer exists." };
-  await prisma.order.update({
-    where: { id },
-    data: {
-      fulfillment,
-      adminNote,
-      balancePaid,
-      balancePaidAt: balancePaid ? (order.balancePaidAt ?? new Date()) : null,
-    },
+  await saveOrderChange(order, {
+    fulfillment,
+    adminNote,
+    balancePaid,
+    balancePaidAt: balancePaid ? (order.balancePaidAt ?? new Date()) : null,
+    expectedDelivery: expected ? new Date(`${expected}T00:00:00Z`) : null,
+    courierName: text(formData, "courierName").slice(0, 80),
+    trackingNumber: text(formData, "trackingNumber").slice(0, 80),
+    trackingUrl,
   });
-  refreshAdmin();
+  refreshOrders();
   return { ok: "Order updated." };
+}
+
+// The status dropdown on the orders list
+export async function setOrderStatus(formData: FormData) {
+  await requireAdmin();
+  const fulfillment = text(formData, "fulfillment");
+  if (!isFulfillment(fulfillment)) return;
+  const order = await prisma.order.findUnique({ where: { id: text(formData, "id") } });
+  if (!order || order.fulfillment === fulfillment) return;
+  await saveOrderChange(order, { fulfillment });
+  refreshOrders();
+}
+
+// Corrects the customer's details, the items (quantity 0 removes one) and the discount.
+// Totals are worked out again here; an advance already paid online is never changed.
+export async function updateOrderDetails(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const order = await prisma.order.findUnique({ where: { id: text(formData, "id") }, include: { items: true } });
+  if (!order) return { error: "This order no longer exists." };
+
+  const customer = {
+    customerName: text(formData, "customerName").slice(0, 80),
+    customerPhone: text(formData, "customerPhone").slice(0, 20),
+    address: text(formData, "address").slice(0, 240),
+    locality: text(formData, "locality").slice(0, 80),
+    landmark: text(formData, "landmark").slice(0, 80),
+    city: text(formData, "city").slice(0, 60),
+    tehsil: text(formData, "tehsil").slice(0, 60),
+    state: text(formData, "state").slice(0, 60),
+    pincode: text(formData, "pincode").slice(0, 10),
+  };
+  const digits = customer.customerPhone.replace(/\D/g, "");
+  if (customer.customerName.length < 2) return { error: "Enter the customer's name." };
+  if (digits.length < 10 || digits.length > 13) return { error: "Enter a valid phone number." };
+  if (customer.address.length < 5 || customer.city.length < 2 || customer.state.length < 2) {
+    return { error: "Enter the full delivery address." };
+  }
+  if (!/^\d{6}$/.test(customer.pincode)) return { error: "Enter a 6-digit pincode." };
+
+  const items = order.items.map((item) => ({
+    id: item.id,
+    qty: Math.floor(Number(formData.get(`qty_${item.id}`))),
+    unitPrice: Math.round(Number(formData.get(`price_${item.id}`))),
+  }));
+  if (items.some((i) => !Number.isFinite(i.qty) || i.qty < 0 || i.qty > 99)) return { error: "Quantities must be 0 to 99." };
+  if (items.some((i) => !Number.isFinite(i.unitPrice) || i.unitPrice < 0)) return { error: "Enter a valid price for each item." };
+  const kept = items.filter((i) => i.qty > 0);
+  if (kept.length === 0) return { error: "An order needs at least one item. To drop the whole order, set it to Cancelled." };
+
+  const subtotal = kept.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
+  const discount = Math.round(Number(formData.get("discount")) || 0);
+  if (discount < 0 || discount > subtotal) return { error: "The discount can't be more than the subtotal." };
+  const total = subtotal - discount;
+  const advancePaid = order.status === "deposit_paid";
+  const deposit = advancePaid ? order.deposit : Math.round((total * order.depositPercent) / 100);
+  // More to pay than before means the balance is no longer settled
+  const stillSettled = order.balancePaid && total <= order.total;
+
+  await prisma.$transaction([
+    ...items.map((i) =>
+      i.qty > 0
+        ? prisma.orderItem.update({ where: { id: i.id }, data: { qty: i.qty, unitPrice: i.unitPrice } })
+        : prisma.orderItem.delete({ where: { id: i.id } }),
+    ),
+    prisma.order.update({
+      where: { id: order.id },
+      data: {
+        ...customer,
+        subtotal,
+        discount,
+        total,
+        deposit,
+        balancePaid: stillSettled,
+        balancePaidAt: stillSettled ? order.balancePaidAt : null,
+      },
+    }),
+  ]);
+  refreshOrders();
+  const overpaid = (advancePaid ? deposit : 0) - total;
+  return {
+    ok:
+      overpaid > 0
+        ? `Order updated. The customer has paid ₹${overpaid.toLocaleString("en-IN")} more than the new total, so arrange a refund.`
+        : "Order updated.",
+  };
 }
 
 // ─── Reviews ────────────────────────────────────────────────────────────────

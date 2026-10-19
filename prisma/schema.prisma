@@ -164,6 +164,13 @@ enum FulfillmentStatus {
   cancelled
 }
 
+// How the customer chose to pay at checkout; each one sets how much of the total is paid online first
+enum PaymentMethod {
+  full // the whole amount online
+  advance // the usual advance online, the balance later
+  cod // a small advance online, the rest in cash on delivery
+}
+
 model Order {
   id     String      @id @default(cuid())
   ref    String      @unique // order number shown to the customer
@@ -175,7 +182,10 @@ model Order {
   customerPhone String
   customerEmail String
   address       String
+  locality      String @default("") // area / post office, picked from the pincode
+  landmark      String @default("")
   city          String
+  tehsil        String @default("")
   state         String
   pincode       String
   notes         String @default("")
@@ -186,6 +196,7 @@ model Order {
   total          Int
   deposit        Int
   depositPercent Int
+  paymentMethod  PaymentMethod @default(advance)
 
   razorpayOrderId   String?   @unique
   razorpayPaymentId String?
@@ -199,15 +210,35 @@ model Order {
   balancePaidAt DateTime?
   adminNote     String            @default("") // for the team only, never shown to the customer
 
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  // Delivery details filled in by the team and shown to the customer
+  expectedDelivery DateTime? @db.Date
+  courierName      String    @default("")
+  trackingNumber   String    @default("")
+  trackingUrl      String    @default("")
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
   items     OrderItem[]
+  events    OrderEvent[]
 
   @@index([createdAt])
   @@index([fulfillment])
   @@index([userId])
   @@index([couponCode])
   @@map("orders")
+}
+
+// Each status change made by the team, so the order shows when every step happened
+model OrderEvent {
+  id          String            @id @default(cuid())
+  orderId     String
+  fulfillment FulfillmentStatus
+  createdAt   DateTime          @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_events")
 }
 
 model OrderItem {
@@ -250,7 +281,10 @@ model Address {
   name      String
   phone     String
   address   String
+  locality  String   @default("") // area / post office, picked from the pincode
+  landmark  String   @default("")
   city      String
+  tehsil    String   @default("")
   state     String
   pincode   String
   isDefault Boolean  @default(false)

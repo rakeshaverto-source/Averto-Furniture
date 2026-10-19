@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 
 interface MaterialDetail {
@@ -139,7 +139,7 @@ export default function InteractiveMaterialLab() {
 
         {/* Dynamic Editorial Stage */}
         <AnimatePresence mode="wait">
-          <motion.div
+          <m.div
             key={current.id}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -238,7 +238,7 @@ export default function InteractiveMaterialLab() {
               </div>
             </div>
 
-          </motion.div>
+          </m.div>
         </AnimatePresence>
 
       </div>

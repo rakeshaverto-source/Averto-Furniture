@@ -117,12 +117,72 @@ export default async function AdminProductsPage({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl text-[#111110]">Products</h1>
-          <p className="mt-1 text-sm text-stone-500">Click a product to edit its details, colours and photos.</p>
+          <p className="mt-1 text-sm text-stone-500">
+            Everything in your shop. Click a product to change anything about it.
+          </p>
         </div>
         <Link href="/admin/products/new" className={primaryButton}>
           + Add product
         </Link>
       </div>
+
+      <details className="mt-4 rounded-2xl border border-stone-200 bg-white px-5 py-3 text-sm group">
+        <summary className="cursor-pointer list-none font-medium text-stone-900 flex items-center justify-between">
+          How this page works
+          <span className="text-xs font-normal text-stone-500 group-open:hidden">Show</span>
+          <span className="text-xs font-normal text-stone-500 hidden group-open:inline">Hide</span>
+        </summary>
+        <ul className="mt-3 mb-1 space-y-2.5 text-stone-700 leading-relaxed">
+          <li className="flex gap-2.5">
+            <Pencil className="w-4 h-4 mt-0.5 shrink-0 text-stone-500" aria-hidden />
+            <span>
+              <strong className="font-medium text-stone-900">Edit:</strong> click the product&apos;s name or the pencil.
+              There you change the name, price, description, size and specs, colours and photos.
+            </span>
+          </li>
+          <li className="flex gap-2.5">
+            <EyeOff className="w-4 h-4 mt-0.5 shrink-0 text-stone-500" aria-hidden />
+            <span>
+              <strong className="font-medium text-stone-900">Hide from the shop:</strong> the eye button. Nothing is
+              deleted, customers just stop seeing it. Press it again to bring it back.
+            </span>
+          </li>
+          <li className="flex gap-2.5">
+            <ExternalLink className="w-4 h-4 mt-0.5 shrink-0 text-stone-500" aria-hidden />
+            <span>
+              <strong className="font-medium text-stone-900">See it on the shop:</strong> opens the product the way a
+              customer sees it.
+            </span>
+          </li>
+          <li className="flex gap-2.5">
+            <span className="w-4 mt-0.5 shrink-0 text-center font-semibold text-stone-500" aria-hidden>
+              +
+            </span>
+            <span>
+              <strong className="font-medium text-stone-900">New product:</strong> &ldquo;+ Add product&rdquo; at the top.
+            </span>
+          </li>
+          <li className="flex gap-2.5">
+            <span className="w-4 mt-1.5 shrink-0 flex justify-center" aria-hidden>
+              <span className="h-2 w-2 rounded-full bg-emerald-600" />
+            </span>
+            <span>
+              <strong className="font-medium text-stone-900">Status:</strong>{" "}
+              <span className="text-emerald-800">On shop</span> means customers can see it.{" "}
+              <span className="text-amber-800">No photo</span> means it still needs a photo; it stays off the shop
+              until it has one. <span className="text-stone-600">Hidden</span> means you hid it.
+            </span>
+          </li>
+          <li className="flex gap-2.5">
+            <Star className="w-4 h-4 mt-0.5 shrink-0 text-stone-500" aria-hidden />
+            <span>
+              <strong className="font-medium text-stone-900">Sold and Rating:</strong> Sold shows how many pieces were
+              ordered and the money they brought in (cancelled orders are not counted). Rating is the average of the
+              approved reviews.
+            </span>
+          </li>
+        </ul>
+      </details>
 
       {params.deleted && (
         <p role="status" className="mt-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-900">

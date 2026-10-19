@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import CartButton from "@/components/cart/CartButton";
 import AccountButton from "@/components/layout/AccountButton";
-import { motion, useScroll, useMotionValueEvent } from "framer-motion";
+import { m, useScroll, useMotionValueEvent } from "framer-motion";
 
 const navItems = [
   { name: "Home", href: "/" },
@@ -31,7 +31,7 @@ export default function Navbar() {
   });
 
   return (
-    <motion.header
+    <m.header
       animate={{ y: hidden ? "-100%" : "0%" }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className={`w-full bg-white/95 backdrop-blur-md sticky top-0 z-[100] px-6 md:px-16 border-b border-stone-100 transition-[padding,box-shadow] duration-300 ${
@@ -84,6 +84,6 @@ export default function Navbar() {
           <AccountButton />
         </div>
       </div>
-    </motion.header>
+    </m.header>
   );
 }

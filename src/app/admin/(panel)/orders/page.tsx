@@ -4,6 +4,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { formatPrice } from "@/data/collections";
 import { FULFILLMENT, fulfillmentInfo, formatDateTime } from "@/lib/admin-format";
 import { inputClass, secondaryButton } from "@/components/admin/ui";
+import QuickStatusSelect from "@/components/admin/QuickStatusSelect";
+import { PLACED_ORDER, UNPAID_ATTEMPT } from "@/lib/orders";
 import type { FulfillmentStatus, Prisma } from "@/generated/prisma/client";
 
 const PAGE_SIZE = 25;
@@ -16,11 +18,14 @@ export default async function AdminOrdersPage({
   await requireAdmin();
   const params = await searchParams;
   const status = FULFILLMENT.some((f) => f.value === params.status) ? (params.status as FulfillmentStatus) : undefined;
+  // Checkouts whose online payment was never completed live in their own tab, out of the real orders
+  const unpaid = params.status === "unpaid";
+  const activeTab = unpaid ? "unpaid" : status;
   const q = (params.q ?? "").trim().slice(0, 60);
   const page = Math.max(1, Math.floor(Number(params.page)) || 1);
 
   const where: Prisma.OrderWhereInput = {
-    ...(status ? { fulfillment: status } : {}),
+    ...(unpaid ? UNPAID_ATTEMPT : { ...PLACED_ORDER, ...(status ? { fulfillment: status } : {}) }),
     ...(q
       ? {
           OR: [
@@ -34,7 +39,7 @@ export default async function AdminOrdersPage({
       : {}),
   };
 
-  const [orders, total, counts] = await Promise.all([
+  const [orders, total, counts, unpaidCount] = await Promise.all([
     prisma.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -43,7 +48,8 @@ export default async function AdminOrdersPage({
       include: { _count: { select: { items: true } } },
     }),
     prisma.order.count({ where }),
-    prisma.order.groupBy({ by: ["fulfillment"], _count: { _all: true } }),
+    prisma.order.groupBy({ by: ["fulfillment"], where: PLACED_ORDER, _count: { _all: true } }),
+    prisma.order.count({ where: UNPAID_ATTEMPT }),
   ]);
   const countOf = (value: FulfillmentStatus) => counts.find((c) => c.fulfillment === value)?._count._all ?? 0;
   const allCount = counts.reduce((sum, c) => sum + c._count._all, 0);
@@ -51,7 +57,7 @@ export default async function AdminOrdersPage({
 
   const href = (next: { status?: string; page?: number }) => {
     const sp = new URLSearchParams();
-    const s = "status" in next ? next.status : status;
+    const s = "status" in next ? next.status : activeTab;
     if (s) sp.set("status", s);
     if (q) sp.set("q", q);
     if (next.page && next.page > 1) sp.set("page", String(next.page));
@@ -65,9 +71,13 @@ export default async function AdminOrdersPage({
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <nav aria-label="Filter by status" className="flex flex-wrap gap-1.5 text-sm">
-          {[{ value: undefined, label: "All", count: allCount }, ...FULFILLMENT.map((f) => ({ ...f, count: countOf(f.value) }))].map(
+          {[
+            { value: undefined as string | undefined, label: "All", count: allCount },
+            ...FULFILLMENT.map((f) => ({ value: f.value as string, label: f.label, count: countOf(f.value) })),
+            { value: "unpaid", label: "Unpaid attempts", count: unpaidCount },
+          ].map(
             (tab) => {
-              const active = tab.value === status;
+              const active = tab.value === activeTab;
               return (
                 <Link
                   key={tab.label}
@@ -84,7 +94,7 @@ export default async function AdminOrdersPage({
           )}
         </nav>
         <form className="ml-auto flex gap-2 w-full sm:w-auto" role="search">
-          {status && <input type="hidden" name="status" value={status} />}
+          {activeTab && <input type="hidden" name="status" value={activeTab} />}
           <input
             name="q"
             defaultValue={q}
@@ -136,11 +146,16 @@ export default async function AdminOrdersPage({
                       <span className="text-stone-500">Offline</span>
                     )}
                     {o.balancePaid && <span className="block text-emerald-800">✓ Balance paid</span>}
+                    {o.paymentMethod === "cod" && <span className="block text-stone-500">Cash on Delivery</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${info.tone}`}>
-                      {info.label}
-                    </span>
+                    {unpaid ? (
+                      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${info.tone}`}>
+                        {info.label}
+                      </span>
+                    ) : (
+                      <QuickStatusSelect key={o.fulfillment} id={o.id} fulfillment={o.fulfillment} label={o.ref} />
+                    )}
                   </td>
                 </tr>
               );

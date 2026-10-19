@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
 interface Review {
@@ -83,7 +83,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 function ReviewCard({ review, index, featured }: { review: Review; index: number; featured: boolean }) {
   return (
-    <motion.article
+    <m.article
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
@@ -139,7 +139,7 @@ function ReviewCard({ review, index, featured }: { review: Review; index: number
           <span className="text-stone-700 font-medium truncate">{review.projectTitle}</span>
         </div>
       )}
-    </motion.article>
+    </m.article>
   );
 }
 
@@ -148,7 +148,7 @@ export default function ClientReviewsSection() {
     <section className="w-full bg-[#F5F2EB] py-20 sm:py-28 px-6 sm:px-10 lg:px-16 border-t border-stone-200/80 overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Centered header with the rating summary that makes it read as reviews */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
@@ -158,7 +158,7 @@ export default function ClientReviewsSection() {
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-normal text-[#111110] tracking-tight leading-[1.1]">
             <TextReveal text="What our clients say" />
           </h2>
-        </motion.div>
+        </m.div>
 
         {/* Review cards: two wide cards with project photos, two compact ones */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">

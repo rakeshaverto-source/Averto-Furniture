@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireCustomer } from "@/lib/customer-auth";
 import { accountSummary, productPhotos } from "@/lib/account";
+import { PLACED_ORDER } from "@/lib/orders";
 import OrderCard from "@/components/account/OrderCard";
 import OrderTimeline from "@/components/account/OrderTimeline";
 
@@ -12,7 +13,7 @@ export default async function AccountOverview({ searchParams }: { searchParams: 
   const [summary, recent, photos] = await Promise.all([
     accountSummary(customer.id, customer.email),
     prisma.order.findMany({
-      where: { userId: customer.id },
+      where: { ...PLACED_ORDER, userId: customer.id },
       orderBy: { createdAt: "desc" },
       take: 3,
       include: { items: { select: { id: true, name: true, qty: true, productId: true } } },

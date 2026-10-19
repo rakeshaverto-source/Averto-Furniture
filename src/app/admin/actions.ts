@@ -244,6 +244,24 @@ export async function moveImage(formData: FormData) {
   refreshShop();
 }
 
+// Puts a photo first and makes it a photo for all colours, so the shop uses it as the main photo
+export async function makeMainImage(formData: FormData) {
+  await requireAdmin();
+  const id = text(formData, "id");
+  const image = await prisma.productImage.findUnique({ where: { id } });
+  if (!image) return;
+  const all = await prisma.productImage.findMany({
+    where: { productId: image.productId },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+  });
+  const order = [id, ...all.map((i) => i.id).filter((other) => other !== id)];
+  await prisma.$transaction([
+    prisma.productImage.update({ where: { id }, data: { colorId: null } }),
+    ...order.map((imageId, i) => prisma.productImage.update({ where: { id: imageId }, data: { sortOrder: i } })),
+  ]);
+  refreshShop();
+}
+
 export async function deleteImage(formData: FormData) {
   await requireAdmin();
   const id = text(formData, "id");

@@ -3,23 +3,33 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 import { formatPrice } from "@/data/collections";
-import { PAYMENT_LABEL, fulfillmentInfo, formatDate, formatDateTime } from "@/lib/admin-format";
+import {
+  PAYMENT_LABEL,
+  fulfillmentInfo,
+  formatDate,
+  formatDateTime,
+  orderUpdateMessage,
+  toDateInput,
+  whatsappLink,
+} from "@/lib/admin-format";
 import OrderStatusForm from "@/components/admin/OrderStatusForm";
-
-// wa.me needs the number with country code; Indian numbers are often typed without it
-function whatsappNumber(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length === 10 ? `91${digits}` : digits.replace(/^0+/, "");
-}
+import OrderEditForm from "@/components/admin/OrderEditForm";
+import { PAYMENT_METHOD_NAME } from "@/data/store";
+import { addressLines } from "@/lib/address";
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
-  const order = await prisma.order.findUnique({ where: { id }, include: { items: true } });
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { items: { orderBy: { id: "asc" } }, events: { orderBy: { createdAt: "asc" } } },
+  });
   if (!order) notFound();
 
   const info = fulfillmentInfo(order.fulfillment);
   const balance = order.total - (order.status === "deposit_paid" ? order.deposit : 0);
+  const balanceOpen = order.balancePaid ? 0 : balance;
+  const updateMessage = orderUpdateMessage({ ...order, balanceDue: balanceOpen });
   const rows: [string, string][] = [
     ["Subtotal", formatPrice(order.subtotal)],
     ...(order.discount > 0 ? [[`Coupon ${order.couponCode ?? ""}`.trim(), `− ${formatPrice(order.discount)}`] as [string, string]] : []),
@@ -81,7 +91,8 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
 
           <section className="rounded-2xl border border-stone-200 bg-white p-5 text-sm">
             <h2 className="font-medium text-stone-900">Payment</h2>
-            <p className="mt-2 text-stone-700">{PAYMENT_LABEL[order.status]}</p>
+            <p className="mt-2 font-medium text-stone-900">{PAYMENT_METHOD_NAME[order.paymentMethod]}</p>
+            <p className="mt-1 text-stone-700">{PAYMENT_LABEL[order.status]}</p>
             {order.paidAt && <p className="text-xs text-stone-500">Paid {formatDateTime(order.paidAt)}</p>}
             {order.razorpayPaymentId && (
               <p className="mt-1 text-xs text-stone-500 font-mono">Razorpay {order.razorpayPaymentId}</p>
@@ -89,9 +100,60 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             <p className="mt-3 text-stone-700">
               {order.balancePaid
                 ? `Balance received${order.balancePaidAt ? ` on ${formatDate(order.balancePaidAt)}` : ""}.`
-                : `Still to collect: ${formatPrice(balance)}`}
+                : `Still to collect${order.paymentMethod === "cod" ? " in cash on delivery" : ""}: ${formatPrice(balance)}`}
             </p>
           </section>
+
+          <details className="rounded-2xl border border-stone-200 bg-white p-5 group">
+            <summary className="cursor-pointer font-medium text-stone-900 list-none flex justify-between">
+              Edit order
+              <span className="text-sm font-normal text-stone-500 group-open:hidden">Customer details, items, discount</span>
+            </summary>
+            <div className="mt-5">
+              <OrderEditForm
+                order={{
+                  id: order.id,
+                  customerName: order.customerName,
+                  customerPhone: order.customerPhone,
+                  address: order.address,
+                  locality: order.locality,
+                  landmark: order.landmark,
+                  city: order.city,
+                  tehsil: order.tehsil,
+                  state: order.state,
+                  pincode: order.pincode,
+                  discount: order.discount,
+                  depositPercent: order.depositPercent,
+                  advancePaid: order.status === "deposit_paid",
+                  deposit: order.deposit,
+                  items: order.items.map((i) => ({
+                    id: i.id,
+                    name: i.name,
+                    colorName: i.colorName,
+                    qty: i.qty,
+                    unitPrice: i.unitPrice,
+                  })),
+                }}
+              />
+            </div>
+          </details>
+
+          {(order.expectedDelivery || order.courierName || order.trackingNumber) && (
+            <section className="rounded-2xl border border-stone-200 bg-white p-5 text-sm">
+              <h2 className="font-medium text-stone-900">Delivery</h2>
+              {order.expectedDelivery && <p className="mt-2 text-stone-700">Expected {formatDate(order.expectedDelivery)}</p>}
+              {(order.courierName || order.trackingNumber) && (
+                <p className="mt-1 text-stone-700">
+                  {[order.courierName, order.trackingNumber && `#${order.trackingNumber}`].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              {order.trackingUrl && (
+                <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block underline underline-offset-4">
+                  Tracking link ↗
+                </a>
+              )}
+            </section>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -103,7 +165,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                 Call {order.customerPhone}
               </a>
               <a
-                href={`https://wa.me/${whatsappNumber(order.customerPhone)}?text=${encodeURIComponent(`Hello ${order.customerName}, this is Averto about your order ${order.ref}.`)}`}
+                href={whatsappLink(order.customerPhone, `Hello ${order.customerName}, this is Averto about your order ${order.ref}.`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-lg border border-stone-200 px-3 py-1.5 hover:border-stone-400"
@@ -115,11 +177,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               </a>
             </div>
             <h3 className="mt-4 text-xs uppercase tracking-wider text-stone-500">Deliver to</h3>
-            <p className="mt-1 text-stone-700 whitespace-pre-line">
-              {order.address}
-              {"\n"}
-              {order.city}, {order.state} {order.pincode}
-            </p>
+            <p className="mt-1 text-stone-700 whitespace-pre-line">{addressLines(order, { tehsil: true }).join("\n")}</p>
             {order.notes && (
               <>
                 <h3 className="mt-4 text-xs uppercase tracking-wider text-stone-500">Customer note</h3>
@@ -136,7 +194,53 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               balancePaid={order.balancePaid}
               adminNote={order.adminNote}
               balanceLabel={`${formatPrice(balance)} after the advance`}
+              expectedDelivery={toDateInput(order.expectedDelivery)}
+              courierName={order.courierName}
+              trackingNumber={order.trackingNumber}
+              trackingUrl={order.trackingUrl}
             />
+          </section>
+
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 text-sm">
+            <h2 className="font-medium text-stone-900">Send the customer an update</h2>
+            <p className="mt-1 text-xs text-stone-500">A WhatsApp message for the current status, ready to send. Save changes first.</p>
+            <p className="mt-3 rounded-lg bg-stone-50 p-3 text-stone-700 whitespace-pre-line">{updateMessage}</p>
+            <a
+              href={whatsappLink(order.customerPhone, updateMessage)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-block rounded-lg bg-[#1A1A18] px-4 py-2 text-white hover:bg-[#3b3732]"
+            >
+              Open in WhatsApp
+            </a>
+          </section>
+
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 text-sm">
+            <h2 className="font-medium text-stone-900">History</h2>
+            <ol className="mt-3 space-y-2">
+              <li className="flex justify-between gap-3">
+                <span className="text-stone-900">Placed</span>
+                <span className="text-stone-500">{formatDateTime(order.createdAt)}</span>
+              </li>
+              {order.paidAt && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-stone-900">Paid online</span>
+                  <span className="text-stone-500">{formatDateTime(order.paidAt)}</span>
+                </li>
+              )}
+              {order.events.map((e) => (
+                <li key={e.id} className="flex justify-between gap-3">
+                  <span className="text-stone-900">{fulfillmentInfo(e.fulfillment).label}</span>
+                  <span className="text-stone-500">{formatDateTime(e.createdAt)}</span>
+                </li>
+              ))}
+              {order.balancePaidAt && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-stone-900">Balance received</span>
+                  <span className="text-stone-500">{formatDateTime(order.balancePaidAt)}</span>
+                </li>
+              )}
+            </ol>
           </section>
         </div>
       </div>

@@ -2,6 +2,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getProducts } from "@/lib/catalog";
+import { PLACED_ORDER } from "@/lib/orders";
 import type { FulfillmentStatus } from "@/generated/prisma/client";
 
 // The order journey as customers see it
@@ -53,8 +54,8 @@ export async function couponsFor(email: string) {
 
 export async function accountSummary(userId: string, email: string) {
   const [orders, active, saved, coupons] = await Promise.all([
-    prisma.order.count({ where: { userId } }),
-    prisma.order.count({ where: { userId, fulfillment: { notIn: ["delivered", "cancelled"] } } }),
+    prisma.order.count({ where: { ...PLACED_ORDER, userId } }),
+    prisma.order.count({ where: { ...PLACED_ORDER, userId, fulfillment: { notIn: ["delivered", "cancelled"] } } }),
     prisma.wishlistItem.count({ where: { userId } }),
     couponsFor(email).then((c) => c.length),
   ]);

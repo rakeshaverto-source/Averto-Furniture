@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion, type Variants } from "framer-motion";
+import { m, type Variants } from "framer-motion";
 
 interface TextRevealProps {
   text: string;
@@ -47,18 +47,18 @@ export default function TextReveal({
     <span className={className}>
       {/* Full sentence for screen readers; split words are decorative */}
       <span className="sr-only">{text}</span>
-      <motion.span aria-hidden="true" custom={delay} variants={container} {...animateProps}>
+      <m.span aria-hidden="true" custom={delay} variants={container} {...animateProps}>
         {words.map((w, i) => (
           <React.Fragment key={`${w}-${i}`}>
             <span className="inline-block overflow-hidden align-bottom pb-[0.1em] -mb-[0.1em]">
-              <motion.span className="inline-block will-change-transform" variants={word}>
+              <m.span className="inline-block will-change-transform" variants={word}>
                 {w}
-              </motion.span>
+              </m.span>
             </span>
             {i < words.length - 1 && " "}
           </React.Fragment>
         ))}
-      </motion.span>
+      </m.span>
     </span>
   );
 }

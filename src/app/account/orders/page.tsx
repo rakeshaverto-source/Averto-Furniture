@@ -2,13 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireCustomer } from "@/lib/customer-auth";
 import { productPhotos } from "@/lib/account";
+import { PLACED_ORDER } from "@/lib/orders";
 import OrderCard from "@/components/account/OrderCard";
 
 export default async function MyOrdersPage() {
   const customer = await requireCustomer("/account/orders");
   const [orders, photos] = await Promise.all([
     prisma.order.findMany({
-      where: { userId: customer.id },
+      where: { ...PLACED_ORDER, userId: customer.id },
       orderBy: { createdAt: "desc" },
       include: { items: { select: { id: true, name: true, qty: true, productId: true } } },
     }),

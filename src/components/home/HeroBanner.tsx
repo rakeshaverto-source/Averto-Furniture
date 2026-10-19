@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { m, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
 interface HeroSlide {
@@ -98,9 +98,9 @@ export default function HeroBanner() {
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* Background Slides */}
-      <motion.div className="absolute inset-0 z-0" style={{ y: bgY }}>
+      <m.div className="absolute inset-0 z-0" style={{ y: bgY }}>
         <AnimatePresence mode="wait">
-          <motion.div
+          <m.div
             key={slide.id}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -109,7 +109,7 @@ export default function HeroBanner() {
             className="absolute inset-0 overflow-hidden"
           >
             {/* Slow Ken Burns zoom-out while each slide is on screen */}
-            <motion.div
+            <m.div
               className="absolute inset-0"
               initial={{ scale: 1.12 }}
               animate={{ scale: 1 }}
@@ -122,8 +122,8 @@ export default function HeroBanner() {
                 priority
                 className={`object-cover ${slide.objectPos}`}
               />
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         </AnimatePresence>
 
         {/* Soft subtle warm gradient: brings back the rich photography details instead of heavy whiteout */}
@@ -131,10 +131,10 @@ export default function HeroBanner() {
         
         {/* Seamless bottom fade into next section */}
         <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#FAF8F5] to-transparent pointer-events-none" />
-      </motion.div>
+      </m.div>
 
       {/* Hero Content Left Aligned */}
-      <motion.div
+      <m.div
         className="relative z-10 max-w-7xl mx-auto px-6 md:px-16 w-full py-16"
         style={{ y: contentY, opacity: contentOpacity }}
       >
@@ -152,7 +152,7 @@ export default function HeroBanner() {
             />
           </h1>
 
-          <motion.p
+          <m.p
             key={`${slide.id}-subtitle`}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -160,7 +160,7 @@ export default function HeroBanner() {
             className="mt-4 text-base sm:text-lg text-[#5A5750] font-light max-w-md leading-relaxed min-h-[56px]"
           >
             {slide.subtitle}
-          </motion.p>
+          </m.p>
 
           <div className="mt-8 flex items-center gap-4">
             <a
@@ -178,7 +178,7 @@ export default function HeroBanner() {
             </a>
           </div>
         </div>
-      </motion.div>
+      </m.div>
 
       {/* Slider Controls (Bottom Right) */}
       <div className="absolute bottom-10 right-6 sm:right-16 z-20 flex items-center gap-4 px-1 py-2.5">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getAdmin } from "@/lib/admin-auth";
+import { PLACED_ORDER } from "@/lib/orders";
 import AdminNav from "@/components/admin/AdminNav";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const [pendingReviews, newOrders] = admin
     ? await Promise.all([
         prisma.review.count({ where: { status: "pending" } }),
-        prisma.order.count({ where: { fulfillment: "new" } }),
+        prisma.order.count({ where: { ...PLACED_ORDER, fulfillment: "new" } }),
       ])
     : [0, 0];
 

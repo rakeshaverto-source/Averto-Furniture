@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
-import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
+import { m, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import {
   discountPercent,
   formatPrice,
@@ -14,7 +14,7 @@ import {
   type ProductImage,
 } from "@/data/collections";
 import { getRatingSummary, type ProductReview } from "@/data/reviews";
-import { DEPOSIT_PERCENT, depositFor } from "@/data/store";
+import { COD_ADVANCE_PERCENT, depositFor } from "@/data/store";
 import { useCart } from "@/components/cart/CartProvider";
 import PriceTag from "./PriceTag";
 import WishlistButton from "@/components/account/WishlistButton";
@@ -85,7 +85,7 @@ function ProductGallery({
     <div className="flex flex-col lg:flex-row-reverse lg:justify-end gap-3 sm:gap-4">
       <div className="relative flex-1 min-w-0 aspect-[4/5] lg:max-w-[26rem] lg:max-h-[calc(100vh-9rem)] overflow-hidden rounded-sm bg-[#ECE8E1]">
         <AnimatePresence initial={false}>
-          <motion.div
+          <m.div
             key={`${active}-${current.src}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -103,7 +103,7 @@ function ProductGallery({
               className={`${current.fit === "contain" ? "object-contain" : "object-cover"} object-center`}
               sizes="(max-width: 1024px) 100vw, 40vw"
             />
-          </motion.div>
+          </m.div>
         </AnimatePresence>
       </div>
 
@@ -266,7 +266,7 @@ export default function ProductDetail({
                 </a>
               )}
               <p className="mt-4 text-2xl font-sans font-semibold text-stone-950">
-                <motion.span
+                <m.span
                   key={price}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -274,7 +274,7 @@ export default function ProductDetail({
                   className="inline-block"
                 >
                   {formatPrice(price)}
-                </motion.span>
+                </m.span>
                 {discountPercent(originalPrice, price) > 0 && originalPrice && (
                   <span className="ml-3 align-middle">
                     <span className="text-base font-normal text-stone-400 line-through">
@@ -352,7 +352,8 @@ export default function ProductDetail({
                 <WishlistButton productId={product.id} className="h-12 sm:w-12 shrink-0" />
               </div>
               <p className="mt-3 text-xs text-stone-500">
-                Pay a {DEPOSIT_PERCENT}% advance ({formatPrice(depositFor(price))}) online to place your order.
+                Order from {formatPrice(depositFor(price, "cod"))} online today. Cash on Delivery available with a{" "}
+                {COD_ADVANCE_PERCENT}% advance.
               </p>
 
               <dl className="mt-10 border-t border-stone-200">
@@ -420,7 +421,7 @@ export default function ProductDetail({
       {/* Phone-only sticky enquiry bar */}
       <AnimatePresence>
         {showBar && (
-          <motion.div
+          <m.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -442,7 +443,7 @@ export default function ProductDetail({
               <ShoppingBag className="w-4 h-4" />
               Add to cart
             </button>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </>

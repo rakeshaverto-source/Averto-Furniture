@@ -5,7 +5,9 @@ import { getCustomer } from "@/lib/customer-auth";
 import { getAdmin } from "@/lib/admin-auth";
 import { formatPrice } from "@/data/collections";
 import { BUSINESS } from "@/data/business";
+import { PAYMENT_METHOD_NAME } from "@/data/store";
 import { formatDate } from "@/lib/admin-format";
+import { addressLines } from "@/lib/address";
 import PrintButton from "@/components/account/PrintButton";
 
 export const metadata: Metadata = {
@@ -55,11 +57,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ ref: s
           <div>
             <p className="text-xs uppercase tracking-wider text-stone-500">Billed and delivered to</p>
             <p className="mt-1 font-medium text-stone-900">{order.customerName}</p>
-            <p className="whitespace-pre-line text-stone-600">
-              {order.address}
-              {"\n"}
-              {order.city}, {order.state} {order.pincode}
-            </p>
+            <p className="whitespace-pre-line text-stone-600">{addressLines(order).join("\n")}</p>
             <p className="text-stone-600">
               {order.customerPhone} · {order.customerEmail}
             </p>
@@ -104,6 +102,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ ref: s
           <div className="flex justify-between border-t border-stone-300 pt-2 text-base font-semibold text-stone-900">
             <dt>Total</dt>
             <dd className="tabular-nums">{formatPrice(order.total)}</dd>
+          </div>
+          <div className="flex justify-between text-stone-600">
+            <dt>Payment method</dt>
+            <dd>{PAYMENT_METHOD_NAME[order.paymentMethod]}</dd>
           </div>
           <div className="flex justify-between text-stone-600">
             <dt>Paid</dt>

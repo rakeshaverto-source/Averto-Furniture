@@ -4,17 +4,16 @@ import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { formatPrice } from "@/data/collections";
-import { DEPOSIT_PERCENT, MAX_QTY_PER_LINE } from "@/data/store";
+import { COD_ADVANCE_PERCENT, DEPOSIT_PERCENT, MAX_QTY_PER_LINE } from "@/data/store";
 import { useCart } from "./CartProvider";
 import CouponBox from "./CouponBox";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function CartDrawer() {
-  const { lines, subtotal, savings, discount, total, deposit, syncing, drawerOpen, closeDrawer, setQty, remove } =
-    useCart();
+  const { lines, subtotal, savings, discount, total, syncing, drawerOpen, closeDrawer, setQty, remove } = useCart();
 
   // Esc closes; page scroll is locked while the drawer is open
   useEffect(() => {
@@ -33,7 +32,7 @@ export default function CartDrawer() {
     <AnimatePresence>
       {drawerOpen && (
         <div className="fixed inset-0 z-[170]" role="dialog" aria-modal="true" aria-label="Shopping cart">
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -41,7 +40,7 @@ export default function CartDrawer() {
             onClick={closeDrawer}
             className="absolute inset-0 bg-black/50"
           />
-          <motion.aside
+          <m.aside
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -171,11 +170,12 @@ export default function CartDrawer() {
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-stone-900">Advance to pay now ({DEPOSIT_PERCENT}%)</span>
-                    <span className="font-serif text-2xl text-stone-950">{formatPrice(deposit)}</span>
+                    <span className="text-sm font-medium text-stone-900">Order total</span>
+                    <span className="font-serif text-2xl text-stone-950">{formatPrice(total)}</span>
                   </div>
                   <p className="mt-2 text-xs text-stone-500">
-                    The balance of {formatPrice(total - deposit)} is settled with our team before delivery.
+                    At checkout, pay in full, pay a {DEPOSIT_PERCENT}% advance, or choose Cash on Delivery with a{" "}
+                    {COD_ADVANCE_PERCENT}% advance.
                   </p>
                   <Link
                     href="/checkout"
@@ -187,7 +187,7 @@ export default function CartDrawer() {
                 </div>
               </>
             )}
-          </motion.aside>
+          </m.aside>
         </div>
       )}
     </AnimatePresence>

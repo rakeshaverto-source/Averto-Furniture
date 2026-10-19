@@ -8,6 +8,22 @@ import type { Prisma } from "@/generated/prisma/client";
 
 export class CouponLimitReached extends Error {}
 
+// An order is created just before the Razorpay window opens, so a closed window or failed payment
+// leaves an "awaiting_payment" order behind. Lists of real orders use this filter to skip them.
+export const PLACED_ORDER: Prisma.OrderWhereInput = { status: { not: "awaiting_payment" } };
+
+// Online payments started but never completed and not yet replaced by a newer attempt
+export const UNPAID_ATTEMPT: Prisma.OrderWhereInput = { status: "awaiting_payment", fulfillment: { not: "cancelled" } };
+
+// When the customer tries again, their earlier unpaid attempts are cancelled (kept for the record),
+// which also frees any coupon those attempts were holding
+export async function cancelUnpaidAttempts(userId: string, keepRef: string) {
+  await prisma.order.updateMany({
+    where: { ...UNPAID_ATTEMPT, userId, ref: { not: keepRef } },
+    data: { fulfillment: "cancelled" },
+  });
+}
+
 // Saves the order. With a usage-limited coupon, the limit is checked again inside the same
 // transaction while holding a lock on that code, so two checkouts at the same moment can't both
 // squeeze past "once per customer".
@@ -28,7 +44,17 @@ export async function saveOrder(data: Prisma.OrderCreateInput, coupon: Coupon | 
 // The first saved address becomes the default.
 export async function rememberAddress(
   userId: string,
-  a: { name: string; phone: string; address: string; city: string; state: string; pincode: string },
+  a: {
+    name: string;
+    phone: string;
+    address: string;
+    locality: string;
+    landmark: string;
+    city: string;
+    tehsil: string;
+    state: string;
+    pincode: string;
+  },
 ) {
   const saved = await prisma.address.findMany({ where: { userId }, select: { address: true, pincode: true } });
   const same = (x: string, y: string) => x.trim().toLowerCase() === y.trim().toLowerCase();
@@ -41,7 +67,10 @@ export async function rememberAddress(
       name: a.name,
       phone: a.phone,
       address: a.address,
+      locality: a.locality,
+      landmark: a.landmark,
       city: a.city,
+      tehsil: a.tehsil,
       state: a.state,
       pincode: a.pincode,
       isDefault: saved.length === 0,

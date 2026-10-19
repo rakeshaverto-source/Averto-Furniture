@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { Star, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { submitReview, type ReviewFormState } from "@/app/actions/reviews";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -46,7 +46,7 @@ function ReviewDialog({
 
   return (
     <div className="fixed inset-0 z-[160] flex items-end sm:items-center justify-center">
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -54,7 +54,7 @@ function ReviewDialog({
         onClick={onClose}
         className="absolute inset-0 bg-black/55"
       />
-      <motion.div
+      <m.div
         role="dialog"
         aria-modal="true"
         aria-labelledby="review-dialog-title"
@@ -241,7 +241,7 @@ function ReviewDialog({
             </p>
           </form>
         )}
-      </motion.div>
+      </m.div>
     </div>
   );
 }

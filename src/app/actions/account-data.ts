@@ -13,6 +13,7 @@ export interface FormResult {
   error?: string;
   ok?: string;
   fieldErrors?: Record<string, string>;
+  id?: string; // the saved address, so checkout can select it straight away
 }
 
 const text = (formData: FormData, key: string, max = 200) => String(formData.get(key) ?? "").trim().slice(0, max);
@@ -53,14 +54,18 @@ export async function saveAddress(_prev: FormResult, formData: FormData): Promis
     name: text(formData, "name", 80),
     phone: text(formData, "phone", 20),
     address: text(formData, "address", 240),
+    locality: text(formData, "locality", 80),
+    landmark: text(formData, "landmark", 80),
     city: text(formData, "city", 60),
+    tehsil: text(formData, "tehsil", 60),
     state: text(formData, "state", 60),
     pincode: text(formData, "pincode", 10),
   };
   const fieldErrors: Record<string, string> = {};
   if (data.name.length < 2) fieldErrors.name = "Enter the name to deliver to.";
   if (!validPhone(data.phone)) fieldErrors.phone = "Enter a valid phone number.";
-  if (data.address.length < 5) fieldErrors.address = "Enter the street address.";
+  if (data.locality.length < 2) fieldErrors.locality = "Select or enter your area.";
+  if (data.address.length < 5) fieldErrors.address = "Enter the house no. and street.";
   if (data.city.length < 2) fieldErrors.city = "Enter the city.";
   if (data.state.length < 2) fieldErrors.state = "Enter the state.";
   if (!/^\d{6}$/.test(data.pincode)) fieldErrors.pincode = "Enter a 6-digit pincode.";
@@ -73,10 +78,14 @@ export async function saveAddress(_prev: FormResult, formData: FormData): Promis
   } else {
     const existing = await prisma.address.count({ where: { userId: customer.id } });
     if (existing >= 10) return { error: "You can save up to 10 addresses." };
-    await prisma.address.create({ data: { ...data, userId: customer.id, isDefault: existing === 0 } });
+    const created = await prisma.address.create({ data: { ...data, userId: customer.id, isDefault: existing === 0 } });
+    refreshAccount();
+    revalidatePath("/checkout");
+    return { ok: "Address saved.", id: created.id };
   }
   refreshAccount();
-  return { ok: id ? "Address updated." : "Address saved." };
+  revalidatePath("/checkout");
+  return { ok: "Address updated.", id };
 }
 
 export async function deleteAddress(formData: FormData) {

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { RANGES, getDashboard, type RangeDays } from "@/lib/sales";
 import { formatPrice } from "@/data/collections";
 import { formatDateTime } from "@/lib/admin-format";
+import { PLACED_ORDER, UNPAID_ATTEMPT } from "@/lib/orders";
 import SalesChart from "@/components/admin/SalesChart";
 
 const BAR = "#C76F35";
@@ -31,16 +32,16 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const [data, newOrders, awaitingPayment, pendingReviews, productsWithoutPhoto] = await Promise.all([
     getDashboard(days),
     prisma.order.findMany({
-      where: { fulfillment: "new" },
+      where: { ...PLACED_ORDER, fulfillment: "new" },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: { id: true, ref: true, customerName: true, city: true, total: true, createdAt: true },
     }),
-    prisma.order.count({ where: { status: "awaiting_payment", fulfillment: { not: "cancelled" } } }),
+    prisma.order.count({ where: UNPAID_ATTEMPT }),
     prisma.review.count({ where: { status: "pending" } }),
     prisma.product.count({ where: { isActive: true, images: { none: {} } } }),
   ]);
-  const newOrderCount = await prisma.order.count({ where: { fulfillment: "new" } });
+  const newOrderCount = await prisma.order.count({ where: { ...PLACED_ORDER, fulfillment: "new" } });
 
   const { current, previous } = data;
   const average = current.orders ? Math.round(current.sales / current.orders) : 0;
@@ -55,7 +56,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
 
   const todo = [
     { count: newOrderCount, label: "new orders to confirm", href: "/admin/orders?status=new" },
-    { count: awaitingPayment, label: "orders waiting for the online advance", href: "/admin/orders" },
+    { count: awaitingPayment, label: "checkouts where the payment was not completed", href: "/admin/orders?status=unpaid" },
     { count: pendingReviews, label: "reviews waiting for approval", href: "/admin/reviews" },
     { count: productsWithoutPhoto, label: "products not on the shop (no photo)", href: "/admin/products" },
   ].filter((t) => t.count > 0);

@@ -12,12 +12,20 @@ export default function OrderStatusForm({
   balancePaid,
   adminNote,
   balanceLabel,
+  expectedDelivery,
+  courierName,
+  trackingNumber,
+  trackingUrl,
 }: {
   id: string;
   fulfillment: FulfillmentStatus;
   balancePaid: boolean;
   adminNote: string;
   balanceLabel: string;
+  expectedDelivery: string; // yyyy-mm-dd or ""
+  courierName: string;
+  trackingNumber: string;
+  trackingUrl: string;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateOrder, {});
 
@@ -50,7 +58,53 @@ export default function OrderStatusForm({
           <span className="block text-xs text-stone-500">{balanceLabel}</span>
         </span>
       </label>
-      <div>
+
+      <fieldset className="space-y-3 border-t border-stone-200 pt-4">
+        <legend className="text-xs uppercase tracking-wider text-stone-500">
+          Delivery <span className="normal-case tracking-normal">(the customer sees this)</span>
+        </legend>
+        <div>
+          <label htmlFor="o-date" className={labelClass}>
+            Expected delivery date
+          </label>
+          <input id="o-date" type="date" name="expectedDelivery" defaultValue={expectedDelivery} className={inputClass} />
+        </div>
+        <div>
+          <label htmlFor="o-courier" className={labelClass}>
+            Courier / transporter
+          </label>
+          <input
+            id="o-courier"
+            name="courierName"
+            defaultValue={courierName}
+            maxLength={80}
+            placeholder="e.g. Delhivery, own van"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="o-tracking" className={labelClass}>
+            Tracking number
+          </label>
+          <input id="o-tracking" name="trackingNumber" defaultValue={trackingNumber} maxLength={80} className={inputClass} />
+        </div>
+        <div>
+          <label htmlFor="o-tracking-url" className={labelClass}>
+            Tracking link
+          </label>
+          <input
+            id="o-tracking-url"
+            name="trackingUrl"
+            type="url"
+            defaultValue={trackingUrl}
+            maxLength={500}
+            placeholder="https://"
+            className={inputClass}
+          />
+        </div>
+      </fieldset>
+
+      <div className="border-t border-stone-200 pt-4">
         <label htmlFor="o-note" className={labelClass}>
           Team note <span className="font-normal text-stone-400">(only you see this)</span>
         </label>

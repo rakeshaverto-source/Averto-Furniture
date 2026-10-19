@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import PriceTag from "@/components/products/PriceTag";
 import WishlistButton from "@/components/account/WishlistButton";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 
 interface Product {
@@ -104,7 +104,7 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
       <div className="max-w-7xl mx-auto">
         
         {/* Header matching the modern sans-serif typography with smooth scroll reveal */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
@@ -137,12 +137,12 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
               );
             })}
           </div>
-        </motion.div>
+        </m.div>
 
         {/* 3-Column Luxury Product Grid with Staggered Scroll Animations */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
           {filtered.map((product, idx) => (
-            <motion.div
+            <m.div
               key={product.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -205,7 +205,7 @@ export default function TopSellingProducts({ prices }: { prices: TopSellingPrice
                   </Link>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
 

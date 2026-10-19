@@ -4,7 +4,17 @@ import type { FulfillmentStatus } from "@/generated/prisma/client";
 
 // Where an order is on its way to the customer. Done steps are filled, the current one is
 // outlined in ink, later ones are outlined. Status also reads in text, not only colour.
-export default function OrderTimeline({ status, compact = false }: { status: FulfillmentStatus; compact?: boolean }) {
+const shortDate = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+
+export default function OrderTimeline({
+  status,
+  compact = false,
+  dates = {},
+}: {
+  status: FulfillmentStatus;
+  compact?: boolean;
+  dates?: Partial<Record<FulfillmentStatus, Date>>; // when each step was reached
+}) {
   if (status === "cancelled") {
     return (
       <p className="flex items-center gap-2 rounded-sm bg-stone-100 px-4 py-3 text-sm text-stone-700">
@@ -47,6 +57,9 @@ export default function OrderTimeline({ status, compact = false }: { status: Ful
               >
                 {step.label}
               </span>
+              {!compact && i <= current && dates[step.value] && (
+                <span className="mt-0.5 text-[11px] text-stone-500">{shortDate.format(dates[step.value])}</span>
+              )}
             </li>
           );
         })}

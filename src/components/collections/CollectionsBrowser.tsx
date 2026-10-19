@@ -6,7 +6,7 @@ import Link from "next/link";
 import PriceTag from "@/components/products/PriceTag";
 import WishlistButton from "@/components/account/WishlistButton";
 import { ArrowUpRight, ChevronDown, SlidersHorizontal, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { WHATSAPP_NUMBER, type CollectionCategory, type CollectionProduct } from "@/data/collections";
 
 type SortKey = "featured" | "price-asc" | "price-desc";
@@ -79,7 +79,7 @@ function FilterSection({
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -87,7 +87,7 @@ function FilterSection({
             className="overflow-hidden"
           >
             <div className="pt-3">{children}</div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
@@ -376,13 +376,13 @@ export default function CollectionsBrowser({
               </button>
             </div>
           ) : (
-            <motion.div
+            <m.div
               layout
               className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-x-6 gap-y-12 lg:gap-x-8 lg:gap-y-14"
             >
               <AnimatePresence mode="popLayout" initial={false}>
                 {visible.map((product) => (
-                  <motion.article
+                  <m.article
                     key={product.id}
                     layout
                     initial={{ opacity: 0, y: 24 }}
@@ -447,10 +447,10 @@ export default function CollectionsBrowser({
                         </a>
                       </div>
                     </div>
-                  </motion.article>
+                  </m.article>
                 ))}
               </AnimatePresence>
-            </motion.div>
+            </m.div>
           )}
         </div>
       </div>
@@ -459,7 +459,7 @@ export default function CollectionsBrowser({
       <AnimatePresence>
         {drawerOpen && (
           <div className="lg:hidden fixed inset-0 z-[150]" role="dialog" aria-modal="true" aria-label="Filters">
-            <motion.div
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -467,7 +467,7 @@ export default function CollectionsBrowser({
               onClick={() => setDrawerOpen(false)}
               className="absolute inset-0 bg-black/50"
             />
-            <motion.div
+            <m.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -500,7 +500,7 @@ export default function CollectionsBrowser({
                   Show {visible.length} {visible.length === 1 ? "piece" : "pieces"}
                 </button>
               </div>
-            </motion.div>
+            </m.div>
           </div>
         )}
       </AnimatePresence>

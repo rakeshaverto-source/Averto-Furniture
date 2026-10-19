@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight, Mail } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import TextReveal from "@/components/motion/TextReveal";
 import { WHATSAPP_NUMBER } from "@/data/collections";
 
@@ -10,7 +10,7 @@ export default function CustomPieceCta() {
 
   return (
     <section className="w-full bg-[#141413] text-white py-16 sm:py-24 px-6 sm:px-10 lg:px-16">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-60px" }}
@@ -45,7 +45,7 @@ export default function CustomPieceCta() {
             <span>Email The Studio</span>
           </a>
         </div>
-      </motion.div>
+      </m.div>
     </section>
   );
 }

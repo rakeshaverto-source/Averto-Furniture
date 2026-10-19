@@ -1,10 +1,10 @@
 "use server";
 
 import { randomBytes } from "crypto";
-import { DEPOSIT_PERCENT, depositFor } from "@/data/store";
+import { depositFor, isPaymentMethod, percentFor, type PaymentMethod } from "@/data/store";
 import { prisma } from "@/lib/prisma";
 import { MAX_CART_LINES, priceCoupon, priceItems, subtotalOf } from "@/lib/pricing";
-import { CouponLimitReached, rememberAddress, saveOrder } from "@/lib/orders";
+import { CouponLimitReached, cancelUnpaidAttempts, rememberAddress, saveOrder } from "@/lib/orders";
 import { createRazorpayOrder, isGenuinePayment, razorpayKeys } from "@/lib/razorpay";
 import { getCustomer } from "@/lib/customer-auth";
 import type { Coupon } from "@/data/coupons";
@@ -20,7 +20,10 @@ export interface CheckoutCustomer {
   phone: string;
   email: string;
   address: string;
+  locality: string;
+  landmark: string;
   city: string;
+  tehsil: string;
   state: string;
   pincode: string;
   notes: string;
@@ -28,13 +31,14 @@ export interface CheckoutCustomer {
 
 export type CreateOrderResult =
   | { ok: false; error: string; fieldErrors?: Partial<Record<keyof CheckoutCustomer, string>> }
-  | { ok: true; mode: "manual"; ref: string; total: number; deposit: number }
+  | { ok: true; mode: "manual"; ref: string; total: number; deposit: number; paymentMethod: PaymentMethod }
   | {
       ok: true;
       mode: "razorpay";
       ref: string;
       total: number;
       deposit: number;
+      paymentMethod: PaymentMethod;
       keyId: string;
       razorpayOrderId: string;
       amountPaise: number;
@@ -50,7 +54,10 @@ function validateCustomer(input: CheckoutCustomer) {
     phone: clean(input?.phone, 20),
     email: clean(input?.email, 120),
     address: clean(input?.address, 240),
+    locality: clean(input?.locality, 80),
+    landmark: clean(input?.landmark, 80),
     city: clean(input?.city, 60),
+    tehsil: clean(input?.tehsil, 60),
     state: clean(input?.state, 60),
     pincode: clean(input?.pincode, 10),
     notes: clean(input?.notes, 1000),
@@ -71,7 +78,11 @@ export async function createOrder(
   items: CheckoutItem[],
   customerInput: CheckoutCustomer,
   couponInput?: string,
+  paymentInput: PaymentMethod = "advance",
 ): Promise<CreateOrderResult> {
+  if (!isPaymentMethod(paymentInput)) return { ok: false, error: "Please choose how you would like to pay." };
+  const paymentMethod = paymentInput;
+
   // Ordering needs an account; the email always comes from it, never from the form
   const account = await getCustomer();
   if (!account) return { ok: false, error: "Please log in again to place your order." };
@@ -111,7 +122,8 @@ export async function createOrder(
     appliedCoupon = result.coupon;
   }
   const total = subtotal - discount;
-  const deposit = depositFor(total);
+  // The amount paid online now depends on the payment choice, worked out here, never taken from the browser
+  const deposit = depositFor(total, paymentMethod);
   const ref = `AV-${randomBytes(5).toString("hex").toUpperCase()}`;
   const order = {
     ref,
@@ -120,7 +132,10 @@ export async function createOrder(
     customerPhone: customer.phone,
     customerEmail: customer.email,
     address: customer.address,
+    locality: customer.locality,
+    landmark: customer.landmark,
     city: customer.city,
+    tehsil: customer.tehsil,
     state: customer.state,
     pincode: customer.pincode,
     notes: customer.notes,
@@ -129,7 +144,8 @@ export async function createOrder(
     discount,
     total,
     deposit,
-    depositPercent: DEPOSIT_PERCENT,
+    depositPercent: percentFor(paymentMethod),
+    paymentMethod,
     // a copy of what was bought, so later price or name changes never rewrite this order
     items: {
       create: lines.map((l) => ({
@@ -153,7 +169,8 @@ export async function createOrder(
     if (!keys) {
       // No payment gateway set up yet: keep the order so the team can contact the customer
       await saveOrder({ ...order, status: "received" }, appliedCoupon, account.email);
-      return { ok: true, mode: "manual", ref, total, deposit };
+      await cancelUnpaidAttempts(account.id, ref).catch(() => {});
+      return { ok: true, mode: "manual", ref, total, deposit, paymentMethod };
     }
 
     const razorpayOrderId = await createRazorpayOrder(deposit, ref);
@@ -168,12 +185,14 @@ export async function createOrder(
       appliedCoupon,
       account.email,
     );
+    await cancelUnpaidAttempts(account.id, ref).catch(() => {});
     return {
       ok: true,
       mode: "razorpay",
       ref,
       total,
       deposit,
+      paymentMethod,
       keyId,
       razorpayOrderId: razorpayOrder.id,
       amountPaise: deposit * 100,
@@ -208,13 +227,19 @@ export async function confirmPayment(input: {
     );
     if (!valid) return { ok: false, error: "We could not verify this payment." };
 
-    // Only an order still waiting for payment moves on, so a repeated confirmation changes nothing
+    // Only an order still waiting for payment moves on, so a repeated confirmation changes nothing.
+    // A payment in full leaves no balance, so it is marked settled at the same time.
+    const paidAt = new Date();
+    const paidInFull = order.deposit >= order.total;
     await prisma.order.updateMany({
       where: { id: order.id, status: "awaiting_payment" },
       data: {
         status: "deposit_paid",
         razorpayPaymentId: String(input.razorpay_payment_id),
-        paidAt: new Date(),
+        paidAt,
+        ...(paidInFull && { balancePaid: true, balancePaidAt: paidAt }),
+        // an attempt cancelled by a newer one can still be paid in another tab: money in means a real order
+        ...(order.fulfillment === "cancelled" && { fulfillment: "new" as const }),
       },
     });
     return { ok: true, ref: order.ref };
