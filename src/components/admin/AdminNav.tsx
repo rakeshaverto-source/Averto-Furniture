@@ -13,6 +13,7 @@ import {
   Star,
   Tags,
   TicketPercent,
+  Truck,
   X,
 } from "lucide-react";
 import { signOut } from "@/app/admin/actions";
@@ -20,6 +21,7 @@ import { signOut } from "@/app/admin/actions";
 const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
+  { href: "/admin/drivers", label: "Drivers", icon: Truck },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },

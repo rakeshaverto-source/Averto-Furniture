@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin-format";
 import OrderStatusForm from "@/components/admin/OrderStatusForm";
 import OrderEditForm from "@/components/admin/OrderEditForm";
+import LiveDeliveryMap from "@/components/account/LiveDeliveryMap";
 import { PAYMENT_METHOD_NAME } from "@/data/store";
 import { addressLines } from "@/lib/address";
 
@@ -25,6 +26,11 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
     include: { items: { orderBy: { id: "asc" } }, events: { orderBy: { createdAt: "asc" } } },
   });
   if (!order) notFound();
+  const drivers = await prisma.driver.findMany({
+    where: { OR: [{ isActive: true }, ...(order.driverId ? [{ id: order.driverId }] : [])] },
+    select: { id: true, name: true, vehicleNumber: true, isActive: true },
+    orderBy: { name: "asc" },
+  });
 
   const info = fulfillmentInfo(order.fulfillment);
   const balance = order.total - (order.status === "deposit_paid" ? order.deposit : 0);
@@ -138,10 +144,19 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             </div>
           </details>
 
-          {(order.expectedDelivery || order.courierName || order.trackingNumber) && (
+          {(order.expectedDelivery || order.deliverySlot || order.driverName || order.courierName || order.trackingNumber) && (
             <section className="rounded-2xl border border-stone-200 bg-white p-5 text-sm">
               <h2 className="font-medium text-stone-900">Delivery</h2>
-              {order.expectedDelivery && <p className="mt-2 text-stone-700">Expected {formatDate(order.expectedDelivery)}</p>}
+              {(order.expectedDelivery || order.deliverySlot) && (
+                <p className="mt-2 text-stone-700">
+                  Expected {[order.expectedDelivery && formatDate(order.expectedDelivery), order.deliverySlot].filter(Boolean).join(", ")}
+                </p>
+              )}
+              {(order.driverName || order.driverPhone || order.vehicleNumber) && (
+                <p className="mt-1 text-stone-700">
+                  Driver: {[order.driverName, order.driverPhone, order.vehicleNumber].filter(Boolean).join(" · ")}
+                </p>
+              )}
               {(order.courierName || order.trackingNumber) && (
                 <p className="mt-1 text-stone-700">
                   {[order.courierName, order.trackingNumber && `#${order.trackingNumber}`].filter(Boolean).join(" · ")}
@@ -152,6 +167,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                   Tracking link ↗
                 </a>
               )}
+              {order.fulfillment === "out_for_delivery" && order.driverId && <LiveDeliveryMap orderRef={order.ref} />}
             </section>
           )}
         </div>
@@ -198,6 +214,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               courierName={order.courierName}
               trackingNumber={order.trackingNumber}
               trackingUrl={order.trackingUrl}
+              driverId={order.driverId}
+              drivers={drivers}
+              deliverySlot={order.deliverySlot}
             />
           </section>
 

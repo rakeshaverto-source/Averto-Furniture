@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useActionState } from "react";
+import Link from "next/link";
 import { updateOrder, type FormState } from "@/app/admin/store-actions";
 import { FULFILLMENT } from "@/lib/admin-format";
 import type { FulfillmentStatus } from "@/generated/prisma/client";
@@ -16,6 +17,9 @@ export default function OrderStatusForm({
   courierName,
   trackingNumber,
   trackingUrl,
+  driverId,
+  drivers,
+  deliverySlot,
 }: {
   id: string;
   fulfillment: FulfillmentStatus;
@@ -26,6 +30,9 @@ export default function OrderStatusForm({
   courierName: string;
   trackingNumber: string;
   trackingUrl: string;
+  driverId: string | null;
+  drivers: { id: string; name: string; vehicleNumber: string; isActive: boolean }[]; // active ones, plus this order's driver
+  deliverySlot: string;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateOrder, {});
 
@@ -69,6 +76,48 @@ export default function OrderStatusForm({
           </label>
           <input id="o-date" type="date" name="expectedDelivery" defaultValue={expectedDelivery} className={inputClass} />
         </div>
+        <div>
+          <label htmlFor="o-slot" className={labelClass}>
+            Time slot
+          </label>
+          <input
+            id="o-slot"
+            name="deliverySlot"
+            defaultValue={deliverySlot}
+            maxLength={40}
+            list="o-slot-options"
+            placeholder="e.g. 10am – 1pm"
+            className={inputClass}
+          />
+          <datalist id="o-slot-options">
+            <option value="10am – 1pm" />
+            <option value="1pm – 4pm" />
+            <option value="4pm – 7pm" />
+          </datalist>
+        </div>
+        <p className="pt-1 text-xs text-stone-500">Our own delivery</p>
+        <div>
+          <label htmlFor="o-driver" className={labelClass}>
+            Driver
+          </label>
+          <select id="o-driver" name="driverId" defaultValue={driverId ?? ""} className={inputClass}>
+            <option value="">No driver</option>
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+                {d.vehicleNumber ? ` · ${d.vehicleNumber}` : ""}
+                {d.isActive ? "" : " (turned off)"}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-stone-500">
+            The order shows in this driver&apos;s app once it is Dispatched.{" "}
+            <Link href="/admin/drivers" className="underline underline-offset-2">
+              Manage drivers
+            </Link>
+          </p>
+        </div>
+        <p className="pt-1 text-xs text-stone-500">Or by courier</p>
         <div>
           <label htmlFor="o-courier" className={labelClass}>
             Courier / transporter

@@ -26,7 +26,7 @@ export default function OrderTimeline({
 
   return (
     <div>
-      <ol className="grid grid-cols-5" aria-label="Order progress">
+      <ol className="grid grid-cols-6" aria-label="Order progress">
         {JOURNEY.map((step, i) => {
           const done = i < current;
           const now = i === current;

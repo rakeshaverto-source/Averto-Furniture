@@ -7,15 +7,12 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slug";
 import { FULFILLMENT } from "@/lib/admin-format";
 import { normaliseEmail } from "@/data/coupons";
-import type { FulfillmentStatus, Prisma } from "@/generated/prisma/client";
+import { refreshOrders, saveOrderChange } from "@/lib/order-status";
+import { hashPin, isValidPin, normalisePhone } from "@/lib/driver-auth";
+import type { FulfillmentStatus } from "@/generated/prisma/client";
 
 const text = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
 const refreshAdmin = () => revalidatePath("/admin", "layout");
-// Order changes show on the customer's "My account" pages too
-const refreshOrders = () => {
-  refreshAdmin();
-  revalidatePath("/account", "layout");
-};
 
 export interface FormState {
   error?: string;
@@ -25,18 +22,6 @@ export interface FormState {
 // ─── Orders ─────────────────────────────────────────────────────────────────
 
 const isFulfillment = (value: string): value is FulfillmentStatus => FULFILLMENT.some((f) => f.value === value);
-
-// Saves an order and, when its status changes, records when that happened for the order history
-async function saveOrderChange(
-  order: { id: string; fulfillment: FulfillmentStatus },
-  data: Prisma.OrderUpdateInput & { fulfillment?: FulfillmentStatus },
-) {
-  const changed = data.fulfillment !== undefined && data.fulfillment !== order.fulfillment;
-  await prisma.$transaction([
-    prisma.order.update({ where: { id: order.id }, data }),
-    ...(changed ? [prisma.orderEvent.create({ data: { orderId: order.id, fulfillment: data.fulfillment! } })] : []),
-  ]);
-}
 
 export async function updateOrder(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
@@ -49,9 +34,14 @@ export async function updateOrder(_prev: FormState, formData: FormData): Promise
   if (expected && !/^\d{4}-\d{2}-\d{2}$/.test(expected)) return { error: "Enter a valid delivery date." };
   const trackingUrl = text(formData, "trackingUrl").slice(0, 500);
   if (trackingUrl && !/^https?:\/\//i.test(trackingUrl)) return { error: "The tracking link should start with https://" };
+  // Choosing one of our drivers copies their details onto the order; "none" clears them
+  const driverId = text(formData, "driverId");
+  const driver = driverId ? await prisma.driver.findUnique({ where: { id: driverId } }) : null;
+  if (driverId && !driver) return { error: "That driver no longer exists." };
 
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order) return { error: "This order no longer exists." };
+  if (driver && !driver.isActive && order.driverId !== driver.id) return { error: `${driver.name} is turned off.` };
   await saveOrderChange(order, {
     fulfillment,
     adminNote,
@@ -61,9 +51,54 @@ export async function updateOrder(_prev: FormState, formData: FormData): Promise
     courierName: text(formData, "courierName").slice(0, 80),
     trackingNumber: text(formData, "trackingNumber").slice(0, 80),
     trackingUrl,
+    driverId: driver?.id ?? null,
+    driverName: driver?.name ?? "",
+    driverPhone: driver?.phone ?? "",
+    vehicleNumber: driver?.vehicleNumber ?? "",
+    deliverySlot: text(formData, "deliverySlot").slice(0, 40),
   });
   refreshOrders();
   return { ok: "Order updated." };
+}
+
+// ─── Drivers ────────────────────────────────────────────────────────────────
+
+// Adds a driver, or updates one when an id is sent. The PIN is required for a new driver and,
+// when editing, only changed if a new one is typed.
+export async function saveDriver(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const id = text(formData, "id");
+  const name = text(formData, "name").slice(0, 80);
+  const phone = normalisePhone(text(formData, "phone"));
+  const pin = text(formData, "pin");
+  const vehicleNumber = text(formData, "vehicleNumber").slice(0, 20).toUpperCase();
+  const isActive = id ? formData.get("isActive") === "on" : true;
+  if (!name) return { error: "Enter the driver's name." };
+  if (!phone) return { error: "Enter the driver's 10-digit mobile number." };
+  if ((!id || pin) && !isValidPin(pin)) return { error: "The PIN should be 4 to 6 digits." };
+
+  const taken = await prisma.driver.findUnique({ where: { phone } });
+  if (taken && taken.id !== id) return { error: `${phone} is already used by ${taken.name}.` };
+
+  const data = { name, phone, vehicleNumber, isActive, ...(pin ? { pinHash: hashPin(pin), failedLogins: 0, lockedUntil: null } : {}) };
+  if (id) {
+    await prisma.$transaction([
+      prisma.driver.update({ where: { id }, data }),
+      // A new PIN or turning the driver off signs them out of the app
+      ...(pin || !isActive ? [prisma.driverSession.deleteMany({ where: { driverId: id } })] : []),
+    ]);
+  } else {
+    await prisma.driver.create({ data: { ...data, pinHash: hashPin(pin) } });
+  }
+  refreshAdmin();
+  return { ok: id ? "Driver updated." : `${name} added. Share the phone number and PIN with them.` };
+}
+
+// Signs the driver out of the app on every phone, e.g. after a phone is lost
+export async function signOutDriver(formData: FormData) {
+  await requireAdmin();
+  await prisma.driverSession.deleteMany({ where: { driverId: text(formData, "id") } });
+  refreshAdmin();
 }
 
 // The status dropdown on the orders list

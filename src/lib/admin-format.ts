@@ -5,7 +5,8 @@ export const FULFILLMENT: { value: FulfillmentStatus; label: string; tone: strin
   { value: "new", label: "New", tone: "bg-amber-50 text-amber-900 ring-amber-200" },
   { value: "confirmed", label: "Confirmed", tone: "bg-sky-50 text-sky-900 ring-sky-200" },
   { value: "in_production", label: "Making", tone: "bg-violet-50 text-violet-900 ring-violet-200" },
-  { value: "shipped", label: "Shipped", tone: "bg-indigo-50 text-indigo-900 ring-indigo-200" },
+  { value: "shipped", label: "Dispatched", tone: "bg-indigo-50 text-indigo-900 ring-indigo-200" },
+  { value: "out_for_delivery", label: "Out for delivery", tone: "bg-teal-50 text-teal-900 ring-teal-200" },
   { value: "delivered", label: "Delivered", tone: "bg-emerald-50 text-emerald-900 ring-emerald-200" },
   { value: "cancelled", label: "Cancelled", tone: "bg-stone-100 text-stone-600 ring-stone-200" },
 ];
@@ -58,9 +59,15 @@ export function orderUpdateMessage(o: {
   courierName: string;
   trackingNumber: string;
   trackingUrl: string;
+  driverName: string;
+  driverPhone: string;
+  vehicleNumber: string;
+  deliverySlot: string;
 }) {
   const hello = `Hello ${o.customerName.split(" ")[0]}, this is Averto.`;
   const date = o.expectedDelivery ? formatDate(o.expectedDelivery) : "";
+  const when = [date, o.deliverySlot].filter(Boolean).join(", ");
+  const driver = [o.driverName, o.driverPhone, o.vehicleNumber && `vehicle ${o.vehicleNumber}`].filter(Boolean).join(", ");
   const lines: string[] = [];
   switch (o.fulfillment) {
     case "new":
@@ -80,7 +87,13 @@ export function orderUpdateMessage(o: {
         lines.push(`Courier: ${[o.courierName, o.trackingNumber && `tracking no. ${o.trackingNumber}`].filter(Boolean).join(", ")}.`);
       }
       if (o.trackingUrl) lines.push(`Track it here: ${o.trackingUrl}`);
-      if (date) lines.push(`Expected delivery: ${date}.`);
+      if (driver) lines.push(`Delivered by: ${driver}.`);
+      if (when) lines.push(`Expected delivery: ${when}.`);
+      break;
+    case "out_for_delivery":
+      lines.push(`Your order ${o.ref} is out for delivery${o.deliverySlot ? ` and will reach you between ${o.deliverySlot}` : " today"}.`);
+      if (driver) lines.push(`Delivered by: ${driver}.`);
+      lines.push("Please make sure someone is at home to receive it.");
       break;
     case "delivered":
       lines.push(`Your order ${o.ref} has been delivered. We hope you love it! A short review on our website would mean a lot to us.`);

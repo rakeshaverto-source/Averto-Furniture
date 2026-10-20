@@ -160,6 +160,7 @@ enum FulfillmentStatus {
   confirmed
   in_production
   shipped
+  out_for_delivery
   delivered
   cancelled
 }
@@ -215,9 +216,21 @@ model Order {
   courierName      String    @default("")
   trackingNumber   String    @default("")
   trackingUrl      String    @default("")
+  // When our own team delivers: who is bringing it, and the time window agreed with the customer.
+  // The name, phone and vehicle are copied from the driver, so the order keeps them if the driver leaves.
+  driverId         String?
+  driverName       String    @default("")
+  driverPhone      String    @default("")
+  vehicleNumber    String    @default("")
+  deliverySlot     String    @default("") // e.g. "10am – 1pm"
+  // Only the driver app's latest position, kept while the order is out for delivery and cleared after
+  driverLat        Float?
+  driverLng        Float?
+  driverLocationAt DateTime?
 
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+  driver    Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
   items     OrderItem[]
   events    OrderEvent[]
 
@@ -225,7 +238,40 @@ model Order {
   @@index([fulfillment])
   @@index([userId])
   @@index([couponCode])
+  @@index([driverId])
   @@map("orders")
+}
+
+// Our own delivery staff, who sign in to the driver app with their phone number and a PIN
+model Driver {
+  id            String    @id @default(cuid())
+  name          String
+  phone         String    @unique // 10 digits, no country code
+  pinHash       String // scrypt "salt:hash", never the PIN itself
+  vehicleNumber String    @default("")
+  isActive      Boolean   @default(true)
+  failedLogins  Int       @default(0)
+  lockedUntil   DateTime? // set after too many wrong PINs
+  createdAt     DateTime  @default(now())
+
+  sessions DriverSession[]
+  orders   Order[]
+
+  @@map("drivers")
+}
+
+// One signed-in phone. The app keeps the token; only its hash is stored here.
+model DriverSession {
+  id         String   @id @default(cuid())
+  driverId   String
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("driver_sessions")
 }
 
 // Each status change made by the team, so the order shows when every step happened

@@ -11,6 +11,7 @@ export const JOURNEY: { value: FulfillmentStatus; label: string; hint: string }[
   { value: "confirmed", label: "Confirmed", hint: "Details are final and your piece is scheduled." },
   { value: "in_production", label: "Being made", hint: "Our craftsmen are making your piece." },
   { value: "shipped", label: "On the way", hint: "Your piece has left the workshop." },
+  { value: "out_for_delivery", label: "Out for delivery", hint: "Your piece reaches you today." },
   { value: "delivered", label: "Delivered", hint: "Enjoy it! We would love a review." },
 ];
 

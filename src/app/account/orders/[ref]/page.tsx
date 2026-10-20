@@ -12,6 +12,7 @@ import { PAYMENT_METHOD_NAME } from "@/data/store";
 import { formatDate, formatDateTime } from "@/lib/admin-format";
 import { addressLines } from "@/lib/address";
 import OrderTimeline from "@/components/account/OrderTimeline";
+import LiveDeliveryMap from "@/components/account/LiveDeliveryMap";
 import PayBalanceButton from "@/components/account/PayBalanceButton";
 import AccountReviewForm from "@/components/account/AccountReviewForm";
 
@@ -32,6 +33,9 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
   const reviewedIds = new Set(reviewed.map((r) => r.productId));
   const delivered = order.fulfillment === "delivered";
   const cancelled = order.fulfillment === "cancelled";
+  // The driver's details only matter while the piece is on its way, so they are not shown before or after
+  const onTheWay = order.fulfillment === "shipped" || order.fulfillment === "out_for_delivery";
+  const showDriver = onTheWay && !!(order.driverName || order.driverPhone || order.vehicleNumber);
   const advancePaid = order.status === "deposit_paid";
   const due = order.balancePaid ? 0 : balanceDue(order);
   const canPayOnline = !!razorpayKeys() && advancePaid && !order.balancePaid && !cancelled;
@@ -64,13 +68,29 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
           // the latest time each step was reached; "Order placed" is when the order came in
           dates={{ new: order.createdAt, ...Object.fromEntries(order.events.map((e) => [e.fulfillment, e.createdAt])) }}
         />
-        {!cancelled && !delivered && (order.expectedDelivery || order.courierName || order.trackingNumber) && (
+        {!cancelled && !delivered && (order.expectedDelivery || order.deliverySlot || showDriver || order.courierName || order.trackingNumber) && (
           <div className="mt-6 border-t border-stone-200 pt-5 flex flex-wrap gap-x-10 gap-y-3 text-sm justify-center text-center">
-            {order.expectedDelivery && (
+            {(order.expectedDelivery || order.deliverySlot) && (
               <p>
                 <span className="block text-xs uppercase tracking-wider text-stone-500">Expected delivery</span>
-                <span className="text-stone-900 font-medium">{formatDate(order.expectedDelivery)}</span>
+                <span className="text-stone-900 font-medium">
+                  {[order.expectedDelivery && formatDate(order.expectedDelivery), order.deliverySlot].filter(Boolean).join(", ")}
+                </span>
               </p>
+            )}
+            {showDriver && (
+              <p>
+                <span className="block text-xs uppercase tracking-wider text-stone-500">Delivered by</span>
+                <span className="text-stone-900">{[order.driverName, order.vehicleNumber].filter(Boolean).join(" · ")}</span>
+              </p>
+            )}
+            {showDriver && order.driverPhone && (
+              <a
+                href={`tel:${order.driverPhone.replace(/[\s-]/g, "")}`}
+                className="self-center inline-flex items-center gap-2 rounded-sm bg-[#111110] px-4 py-2 font-medium text-white hover:bg-stone-800"
+              >
+                <Phone className="w-4 h-4" /> Call driver
+              </a>
             )}
             {(order.courierName || order.trackingNumber) && (
               <p>
@@ -91,6 +111,9 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
               </a>
             )}
           </div>
+        )}
+        {order.fulfillment === "out_for_delivery" && order.driverId && (
+          <LiveDeliveryMap orderRef={order.ref} driverPhone={order.driverPhone || undefined} />
         )}
       </section>
 
