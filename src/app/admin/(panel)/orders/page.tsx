@@ -15,7 +15,7 @@ export default async function AdminOrdersPage({
 }: {
   searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
-  await requireAdmin();
+  await requireAdmin("orders");
   const params = await searchParams;
   const status = FULFILLMENT.some((f) => f.value === params.status) ? (params.status as FulfillmentStatus) : undefined;
   // Checkouts whose online payment was never completed live in their own tab, out of the real orders

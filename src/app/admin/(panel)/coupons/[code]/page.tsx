@@ -25,7 +25,7 @@ export default async function CouponTrackPage({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ days?: string }>;
 }) {
-  await requireAdmin();
+  await requireAdmin("coupons");
   const [{ code: rawCode }, { days: requested }] = await Promise.all([params, searchParams]);
   const code = decodeURIComponent(rawCode).toUpperCase();
   const days = (RANGES.find((r) => String(r) === requested) ?? 30) as RangeDays;

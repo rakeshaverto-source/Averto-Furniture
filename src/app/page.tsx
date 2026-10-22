@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
 import HeroBanner from "@/components/home/HeroBanner";
 import FannedCardsSection from "@/components/home/FannedCardsSection";
@@ -7,21 +8,32 @@ import TopSellingProducts, { type TopSellingPrices } from "@/components/home/Top
 import BespokeSectorsSection from "@/components/home/BespokeSectorsSection";
 import InteractiveShowcaseSlider from "@/components/home/InteractiveShowcaseSlider";
 import ClientReviewsSection from "@/components/home/ClientReviewsSection";
+import ClientLogosStrip from "@/components/home/ClientLogosStrip";
 import Footer from "@/components/layout/Footer";
 import StatsStrip from "@/components/home/StatsStrip";
 import ScrollProgress from "@/components/motion/ScrollProgress";
+import JsonLd from "@/components/seo/JsonLd";
 import { getProducts } from "@/lib/catalog";
+import { STATIC_PAGES, getSeoSettings, pageMetadata } from "@/lib/seo";
+import { organizationLd, websiteLd } from "@/lib/structured-data";
 
 // Rebuilt from the database at most every 5 minutes, so price changes reach the home page
 export const revalidate = 300;
 
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("/", STATIC_PAGES.find((p) => p.path === "/")!);
+}
+
 export default async function Home() {
+  const { siteName } = await getSeoSettings();
   const prices: TopSellingPrices = Object.fromEntries(
     (await getProducts()).map((p) => [p.id, { priceInr: p.priceInr, originalPriceInr: p.originalPriceInr }]),
   );
 
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex flex-col">
+      <JsonLd data={[organizationLd(siteName), websiteLd(siteName)]} />
+
       {/* Reading progress line pinned to the top of the viewport */}
       <ScrollProgress />
 
@@ -51,6 +63,9 @@ export default async function Home() {
 
       {/* 7. Signature Monolith Interactive Showcase Slider (Clean Leather & Slate Showcase) */}
       <InteractiveShowcaseSlider />
+
+      {/* Client names (wordmarks until logos are added to /public/clients) */}
+      <ClientLogosStrip />
 
       {/* 8. Client Testimonials & Trust Showcase (Architects & Luxury Homeowners) */}
       <ClientReviewsSection />

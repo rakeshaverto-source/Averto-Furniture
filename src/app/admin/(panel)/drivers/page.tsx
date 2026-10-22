@@ -8,7 +8,7 @@ import DriverForm from "@/components/admin/DriverForm";
 import ConfirmButton from "@/components/admin/ConfirmButton";
 
 export default async function AdminDriversPage() {
-  await requireAdmin();
+  await requireAdmin("drivers");
   const drivers = await prisma.driver.findMany({
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
     include: {
@@ -24,7 +24,11 @@ export default async function AdminDriversPage() {
       <h1 className="font-serif text-3xl text-[#111110]">Drivers</h1>
       <p className="mt-1 text-sm text-stone-500">
         Our own delivery staff. They sign in to the Averto driver app with their mobile number and PIN, and see the orders
-        you assign to them once those are Dispatched.
+        you assign to them once those are Dispatched. Without the app, they can sign in on the website at{" "}
+        <Link href="/driver" target="_blank" className="underline underline-offset-4">
+          /driver
+        </Link>{" "}
+        (location is shared there only while the page is open).
       </p>
 
       <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">

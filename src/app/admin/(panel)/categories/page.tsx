@@ -6,7 +6,7 @@ import CategoryForm from "@/components/admin/CategoryForm";
 import ConfirmButton from "@/components/admin/ConfirmButton";
 
 export default async function AdminCategoriesPage({ searchParams }: { searchParams: Promise<{ inuse?: string }> }) {
-  await requireAdmin();
+  await requireAdmin("categories");
   const { inuse } = await searchParams;
   const categories = await prisma.category.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],

@@ -25,7 +25,7 @@ function Delta({ now, before, days }: { now: number; before: number; days: numbe
 }
 
 export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
-  await requireAdmin();
+  await requireAdmin("dashboard");
   const { days: requested } = await searchParams;
   const days = (RANGES.find((r) => String(r) === requested) ?? 30) as RangeDays;
 

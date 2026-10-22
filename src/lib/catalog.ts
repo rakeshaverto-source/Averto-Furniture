@@ -70,6 +70,8 @@ export const getProducts = unstable_cache(
               })
             : undefined,
           zoomClass: p.zoomClass ?? undefined,
+          seoTitle: p.seoTitle ?? undefined,
+          seoDescription: p.seoDescription ?? undefined,
         },
       ];
     });
@@ -108,6 +110,7 @@ export const getReviews = unstable_cache(
       text: r.text,
       date: monthYear.format(r.createdAt),
       verified: r.verified,
+      isSample: r.isSample,
     }));
   },
   ["reviews"],

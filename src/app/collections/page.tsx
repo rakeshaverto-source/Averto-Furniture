@@ -6,12 +6,13 @@ import CollectionsBrowser from "@/components/collections/CollectionsBrowser";
 import CustomPieceCta from "@/components/collections/CustomPieceCta";
 import ScrollProgress from "@/components/motion/ScrollProgress";
 import { getCategories, getProducts } from "@/lib/catalog";
+import { STATIC_PAGES, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Collections | Averto Bespoke Slate & Luxury Furniture",
-  description:
-    "Browse Averto's made-to-order sofas, dining tables, beds, storage, lighting and leather seating, handcrafted from Rajasthan slate and seasoned teak.",
-};
+// Text from the admin SEO panel when set, otherwise the defaults in src/lib/seo.ts
+export async function generateMetadata(): Promise<Metadata> {
+  const page = STATIC_PAGES.find((p) => p.path === "/collections")!;
+  return pageMetadata("/collections", page);
+}
 
 export default async function CollectionsPage({
   searchParams,

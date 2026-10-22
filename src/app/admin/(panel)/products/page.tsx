@@ -33,7 +33,7 @@ export default async function AdminProductsPage({
 }: {
   searchParams: Promise<{ deleted?: string; q?: string; category?: string; status?: string; sort?: string }>;
 }) {
-  await requireAdmin();
+  await requireAdmin("products");
   const params = await searchParams;
   const q = (params.q ?? "").trim().toLowerCase().slice(0, 60);
   const status = (STATUS_TABS.find((t) => t.value === params.status)?.value ?? "all") as StatusFilter;

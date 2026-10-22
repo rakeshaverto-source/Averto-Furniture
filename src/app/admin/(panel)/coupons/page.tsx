@@ -14,7 +14,7 @@ const indianDay = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "
 const BAR = "#C76F35"; // same single hue as the dashboard charts
 
 export default async function AdminCouponsPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
-  await requireAdmin();
+  await requireAdmin("coupons");
   const { days: requested } = await searchParams;
   const days = (RANGES.find((r) => String(r) === requested) ?? 30) as RangeDays;
   const [coupons, usage, performance] = await Promise.all([

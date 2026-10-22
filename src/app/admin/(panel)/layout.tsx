@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getAdmin } from "@/lib/admin-auth";
+import { canUse, roleLabel } from "@/lib/admin-roles";
 import { PLACED_ORDER } from "@/lib/orders";
 import AdminNav from "@/components/admin/AdminNav";
 
@@ -15,14 +16,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const admin = await getAdmin();
   const [pendingReviews, newOrders] = admin
     ? await Promise.all([
-        prisma.review.count({ where: { status: "pending" } }),
-        prisma.order.count({ where: { ...PLACED_ORDER, fulfillment: "new" } }),
+        canUse(admin.role, "reviews") ? prisma.review.count({ where: { status: "pending" } }) : 0,
+        canUse(admin.role, "orders") ? prisma.order.count({ where: { ...PLACED_ORDER, fulfillment: "new" } }) : 0,
       ])
     : [0, 0];
 
   return (
     <div className="min-h-screen bg-[#FAF8F5]">
-      {admin && <AdminNav email={admin.email} pendingReviews={pendingReviews} newOrders={newOrders} />}
+      {admin && (
+        <AdminNav
+          email={admin.email}
+          role={admin.role}
+          roleName={roleLabel(admin.role)}
+          pendingReviews={pendingReviews}
+          newOrders={newOrders}
+        />
+      )}
       <main className="lg:pl-64">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</div>
       </main>

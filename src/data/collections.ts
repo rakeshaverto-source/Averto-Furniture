@@ -44,6 +44,9 @@ export interface CollectionProduct {
   gallery?: ProductImage[];
   // Optional zoom to crop away a white frame baked into the photo
   zoomClass?: string;
+  // Search-engine title and description from the admin SEO panel
+  seoTitle?: string;
+  seoDescription?: string;
 }
 
 const inr = new Intl.NumberFormat("en-IN", {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAdmin } from "@/lib/admin-auth";
+import { SECTION_HOME } from "@/lib/admin-roles";
 import AdminLoginForm from "@/components/admin/AdminLoginForm";
 
 export const metadata: Metadata = {
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLoginPage() {
-  if (await getAdmin()) redirect("/admin");
+  const admin = await getAdmin();
+  if (admin) redirect(SECTION_HOME[admin.role]);
 
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex items-center justify-center px-4 py-16">

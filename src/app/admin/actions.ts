@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getAdmin, requireAdmin } from "@/lib/admin-auth";
+import { SECTION_HOME } from "@/lib/admin-roles";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isBucketPath, productStorage } from "@/lib/supabase/storage";
 import { slugify } from "@/lib/slug";
@@ -33,11 +34,12 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: "That email and password don't match.", email };
 
-  if (!(await getAdmin())) {
+  const admin = await getAdmin();
+  if (!admin) {
     await supabase.auth.signOut();
     return { error: "This account doesn't have admin access.", email };
   }
-  redirect("/admin");
+  redirect(SECTION_HOME[admin.role]);
 }
 
 export async function signOut() {
@@ -79,7 +81,7 @@ function parseColors(raw: string): ColorInput[] | null {
 }
 
 export async function saveProduct(_prev: ProductFormState, formData: FormData): Promise<ProductFormState> {
-  await requireAdmin();
+  await requireAdmin("products");
 
   const existingId = text(formData, "existingId");
   const name = text(formData, "name");
@@ -179,7 +181,7 @@ export async function saveProduct(_prev: ProductFormState, formData: FormData): 
 
 // Show or hide a product straight from the list
 export async function setProductActive(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("products");
   await prisma.product.updateMany({
     where: { id: text(formData, "id") },
     data: { isActive: formData.get("active") === "true" },
@@ -188,7 +190,7 @@ export async function setProductActive(formData: FormData) {
 }
 
 export async function deleteProduct(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("products");
   const id = text(formData, "id");
   const images = await prisma.productImage.findMany({ where: { productId: id }, select: { path: true } });
   // Past orders keep their own copy of the name and price, so they are unaffected
@@ -202,7 +204,7 @@ export async function deleteProduct(formData: FormData) {
 // ─── Photos ─────────────────────────────────────────────────────────────────
 
 export async function updateImage(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("products");
   const id = text(formData, "id");
   const image = await prisma.productImage.findUnique({ where: { id } });
   if (!image) return;
@@ -223,7 +225,7 @@ export async function updateImage(formData: FormData) {
 
 // Swaps a photo with its neighbour, which is how the order of the gallery is changed
 export async function moveImage(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("products");
   const id = text(formData, "id");
   const direction = text(formData, "direction") === "up" ? -1 : 1;
   const image = await prisma.productImage.findUnique({ where: { id } });
@@ -246,7 +248,7 @@ export async function moveImage(formData: FormData) {
 
 // Puts a photo first and makes it a photo for all colours, so the shop uses it as the main photo
 export async function makeMainImage(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("products");
   const id = text(formData, "id");
   const image = await prisma.productImage.findUnique({ where: { id } });
   if (!image) return;
@@ -263,7 +265,7 @@ export async function makeMainImage(formData: FormData) {
 }
 
 export async function deleteImage(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("products");
   const id = text(formData, "id");
   const image = await prisma.productImage.findUnique({ where: { id } });
   if (!image) return;

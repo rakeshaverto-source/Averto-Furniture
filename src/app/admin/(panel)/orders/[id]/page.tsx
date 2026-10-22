@@ -19,7 +19,7 @@ import { PAYMENT_METHOD_NAME } from "@/data/store";
 import { addressLines } from "@/lib/address";
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireAdmin("orders");
   const { id } = await params;
   const order = await prisma.order.findUnique({
     where: { id },

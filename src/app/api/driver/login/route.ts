@@ -1,6 +1,16 @@
-// Driver app sign-in with phone number and PIN. After 5 wrong PINs the account waits 15 minutes.
+// Driver sign-in with phone number and PIN. After 5 wrong PINs the account waits 15 minutes.
+// The app gets the token back; the website version ({ web: true }) gets it as an httpOnly cookie.
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { LOCK_MINUTES, MAX_FAILED_LOGINS, createDriverSession, normalisePhone, verifyPin } from "@/lib/driver-auth";
+import {
+  DRIVER_COOKIE,
+  DRIVER_COOKIE_DAYS,
+  LOCK_MINUTES,
+  MAX_FAILED_LOGINS,
+  createDriverSession,
+  normalisePhone,
+  verifyPin,
+} from "@/lib/driver-auth";
 import { fail } from "@/lib/driver-orders";
 
 export async function POST(request: Request) {
@@ -30,5 +40,17 @@ export async function POST(request: Request) {
     await prisma.driver.update({ where: { id: driver.id }, data: { failedLogins: 0, lockedUntil: null } });
   }
   const token = await createDriverSession(driver.id);
-  return Response.json({ token, driver: { name: driver.name, phone: driver.phone, vehicleNumber: driver.vehicleNumber } });
+  const profile = { name: driver.name, phone: driver.phone, vehicleNumber: driver.vehicleNumber };
+
+  if (body?.web === true) {
+    (await cookies()).set(DRIVER_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: DRIVER_COOKIE_DAYS * 24 * 60 * 60,
+    });
+    return Response.json({ driver: profile });
+  }
+  return Response.json({ token, driver: profile });
 }

@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 import sharp from "sharp";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getAdmin } from "@/lib/admin-auth";
+import { getAdminFor } from "@/lib/admin-auth";
 import { productStorage } from "@/lib/supabase/storage";
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
@@ -25,7 +25,7 @@ function sameOrigin(request: Request) {
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return fail(403, "Uploads must come from the admin panel.");
-  if (!(await getAdmin())) return fail(401, "Please sign in again.");
+  if (!(await getAdminFor("products"))) return fail(401, "Please sign in again.");
 
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_UPLOAD_BYTES + 64 * 1024) return fail(413, "This photo is over 15 MB.");

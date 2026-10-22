@@ -37,11 +37,42 @@ export async function createDriverSession(driverId: string) {
   return token;
 }
 
+// The website version (/driver) keeps the same token in an httpOnly cookie instead
+export const DRIVER_COOKIE = "averto_driver";
+export const DRIVER_COOKIE_DAYS = 60;
+
 const bearer = (request: Request) => request.headers.get("authorization")?.match(/^Bearer (\S+)$/)?.[1] ?? null;
 
-// The driver behind an app request, or null. Turning a driver off in the admin panel signs them out.
+function cookieToken(request: Request) {
+  const raw = request.headers.get("cookie") ?? "";
+  const match = raw.split(/;\s*/).find((c) => c.startsWith(`${DRIVER_COOKIE}=`));
+  return match ? decodeURIComponent(match.slice(DRIVER_COOKIE.length + 1)) : null;
+}
+
+// A cookie is sent by the browser on its own, so a change made with one must come from our own pages
+function sameOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  try {
+    return !!origin && !!host && new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+// The driver behind an app request (Bearer token) or a /driver page request (cookie), or null.
+// Turning a driver off in the admin panel signs them out of both.
 export async function getDriver(request: Request) {
-  const token = bearer(request);
+  let token = bearer(request);
+  if (!token) {
+    token = cookieToken(request);
+    if (token && request.method !== "GET" && !sameOrigin(request)) return null;
+  }
+  return driverForToken(token);
+}
+
+// For the /driver pages, which read the cookie themselves
+export async function driverForToken(token: string | null | undefined) {
   if (!token) return null;
   const session = await prisma.driverSession.findUnique({
     where: { tokenHash: hashToken(token) },
@@ -56,6 +87,6 @@ export async function getDriver(request: Request) {
 }
 
 export async function endDriverSession(request: Request) {
-  const token = bearer(request);
+  const token = bearer(request) ?? cookieToken(request);
   if (token) await prisma.driverSession.deleteMany({ where: { tokenHash: hashToken(token) } });
 }

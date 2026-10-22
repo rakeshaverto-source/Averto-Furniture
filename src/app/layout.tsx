@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import MotionProvider from "@/components/motion/MotionProvider";
 import CartProvider from "@/components/cart/CartProvider";
+import { rootMetadata } from "@/lib/seo";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -17,34 +18,10 @@ const cormorantGaramond = Cormorant_Garamond({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Averto | Bespoke Slate & Luxury Custom Furniture Studio",
-  description:
-    "Handcrafted bespoke luxury furniture engineered with natural slate, architectural stone, and sustainable hardwoods. Tailored precisely to your living spaces.",
-  keywords: [
-    "bespoke furniture",
-    "custom slate table",
-    "luxury stone furniture",
-    "custom living room furniture",
-    "scandinavian minimal furniture",
-    "handcrafted slate dining table",
-    "custom furniture studio",
-  ],
-  authors: [{ name: "Averto Atelier" }],
-  openGraph: {
-    title: "Averto | Bespoke Slate & Luxury Custom Furniture Studio",
-    description:
-      "Handcrafted bespoke luxury furniture engineered with natural slate stone, architectural timber, and tailored finishes.",
-    url: "https://furnitureaverto.com",
-    siteName: "Averto Studio",
-    locale: "en_US",
-    type: "website",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+// Title, description, share preview and Search Console codes come from the admin SEO panel
+export async function generateMetadata(): Promise<Metadata> {
+  return rootMetadata();
+}
 
 export default function RootLayout({
   children,

@@ -24,7 +24,7 @@ export interface FormState {
 const isFulfillment = (value: string): value is FulfillmentStatus => FULFILLMENT.some((f) => f.value === value);
 
 export async function updateOrder(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireAdmin("orders");
   const id = text(formData, "id");
   const fulfillment = text(formData, "fulfillment");
   if (!isFulfillment(fulfillment)) return { error: "Choose a status." };
@@ -66,7 +66,7 @@ export async function updateOrder(_prev: FormState, formData: FormData): Promise
 // Adds a driver, or updates one when an id is sent. The PIN is required for a new driver and,
 // when editing, only changed if a new one is typed.
 export async function saveDriver(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireAdmin("drivers");
   const id = text(formData, "id");
   const name = text(formData, "name").slice(0, 80);
   const phone = normalisePhone(text(formData, "phone"));
@@ -96,14 +96,14 @@ export async function saveDriver(_prev: FormState, formData: FormData): Promise<
 
 // Signs the driver out of the app on every phone, e.g. after a phone is lost
 export async function signOutDriver(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("drivers");
   await prisma.driverSession.deleteMany({ where: { driverId: text(formData, "id") } });
   refreshAdmin();
 }
 
 // The status dropdown on the orders list
 export async function setOrderStatus(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("orders");
   const fulfillment = text(formData, "fulfillment");
   if (!isFulfillment(fulfillment)) return;
   const order = await prisma.order.findUnique({ where: { id: text(formData, "id") } });
@@ -115,7 +115,7 @@ export async function setOrderStatus(formData: FormData) {
 // Corrects the customer's details, the items (quantity 0 removes one) and the discount.
 // Totals are worked out again here; an advance already paid online is never changed.
 export async function updateOrderDetails(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireAdmin("orders");
   const order = await prisma.order.findUnique({ where: { id: text(formData, "id") }, include: { items: true } });
   if (!order) return { error: "This order no longer exists." };
 
@@ -189,7 +189,7 @@ export async function updateOrderDetails(_prev: FormState, formData: FormData): 
 // ─── Reviews ────────────────────────────────────────────────────────────────
 
 export async function setReviewStatus(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("reviews");
   const status = text(formData, "status");
   if (status !== "approved" && status !== "rejected" && status !== "pending") return;
   await prisma.review.updateMany({ where: { id: text(formData, "id") }, data: { status } });
@@ -198,7 +198,7 @@ export async function setReviewStatus(formData: FormData) {
 }
 
 export async function deleteReview(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("reviews");
   await prisma.review.deleteMany({ where: { id: text(formData, "id") } });
   updateTag("reviews");
   refreshAdmin();
@@ -207,7 +207,7 @@ export async function deleteReview(formData: FormData) {
 // ─── Coupons ────────────────────────────────────────────────────────────────
 
 export async function saveCoupon(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireAdmin("coupons");
   const existing = text(formData, "existingCode");
   const code = (existing || text(formData, "code")).toUpperCase();
   const description = text(formData, "description");
@@ -279,7 +279,7 @@ export async function saveCoupon(_prev: FormState, formData: FormData): Promise<
 }
 
 export async function deleteCoupon(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("coupons");
   // Orders keep the code as plain text, so old orders still show which coupon they used
   await prisma.coupon.deleteMany({ where: { code: text(formData, "code") } });
   refreshAdmin();
@@ -288,7 +288,7 @@ export async function deleteCoupon(formData: FormData) {
 // ─── Categories ─────────────────────────────────────────────────────────────
 
 export async function saveCategory(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireAdmin("categories");
   const existing = text(formData, "existingId");
   const name = text(formData, "name");
   const id = existing || slugify(name);
@@ -312,7 +312,7 @@ export async function saveCategory(_prev: FormState, formData: FormData): Promis
 }
 
 export async function deleteCategory(formData: FormData) {
-  await requireAdmin();
+  await requireAdmin("categories");
   const id = text(formData, "id");
   const inUse = await prisma.product.count({ where: { categoryId: id } });
   if (inUse > 0) redirect(`/admin/categories?inuse=${encodeURIComponent(id)}`);

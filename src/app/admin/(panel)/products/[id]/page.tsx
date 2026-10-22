@@ -14,7 +14,7 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ created?: string; saved?: string }>;
 }) {
-  await requireAdmin();
+  await requireAdmin("products");
   const [{ id }, { created, saved }] = await Promise.all([params, searchParams]);
 
   const [product, categories] = await Promise.all([

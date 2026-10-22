@@ -5,36 +5,47 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ExternalLink,
+  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
   Package,
+  Search,
   ShoppingBag,
   Star,
   Tags,
   TicketPercent,
   Truck,
+  Users,
   X,
 } from "lucide-react";
 import { signOut } from "@/app/admin/actions";
+import { canUse, type AdminSection, type StaffRole } from "@/lib/admin-roles";
 
-const links = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
-  { href: "/admin/drivers", label: "Drivers", icon: Truck },
-  { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/reviews", label: "Reviews", icon: Star },
-  { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },
-  { href: "/admin/categories", label: "Categories", icon: Tags },
+const links: { href: string; label: string; icon: typeof Package; section: AdminSection }[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, section: "dashboard" },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, section: "orders" },
+  { href: "/admin/drivers", label: "Drivers", icon: Truck, section: "drivers" },
+  { href: "/admin/products", label: "Products", icon: Package, section: "products" },
+  { href: "/admin/reviews", label: "Reviews", icon: Star, section: "reviews" },
+  { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, section: "coupons" },
+  { href: "/admin/categories", label: "Categories", icon: Tags, section: "categories" },
+  { href: "/admin/seo", label: "SEO", icon: Search, section: "seo" },
+  { href: "/admin/blog", label: "Blog", icon: FileText, section: "blog" },
+  { href: "/admin/team", label: "Team", icon: Users, section: "team" },
 ];
 
 // Left sidebar on desktop; on phones a top bar whose menu button slides the same sidebar in
 export default function AdminNav({
   email,
+  role,
+  roleName,
   pendingReviews,
   newOrders,
 }: {
   email: string;
+  role: StaffRole;
+  roleName: string;
   pendingReviews: number;
   newOrders: number;
 }) {
@@ -57,8 +68,9 @@ export default function AdminNav({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const home = links.find((l) => canUse(role, l.section))?.href ?? "/admin";
   const brand = (
-    <Link href="/admin" className="font-serif text-xl text-[#111110]">
+    <Link href={home} className="font-serif text-xl text-[#111110]">
       Averto <span className="text-stone-400">Admin</span>
     </Link>
   );
@@ -102,7 +114,7 @@ export default function AdminNav({
         </div>
 
         <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {links.map(({ href, label, icon: Icon }) => {
+          {links.filter((l) => canUse(role, l.section)).map(({ href, label, icon: Icon }) => {
             const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
             const count = counts[href] ?? 0;
             return (
@@ -149,7 +161,7 @@ export default function AdminNav({
             </button>
           </form>
           <p className="px-3 pt-2 text-xs text-stone-400 truncate" title={email}>
-            {email}
+            {email} · {roleName}
           </p>
         </div>
       </aside>

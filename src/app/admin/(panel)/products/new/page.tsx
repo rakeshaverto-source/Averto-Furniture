@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import ProductForm from "@/components/admin/ProductForm";
 
 export default async function NewProductPage() {
-  await requireAdmin();
+  await requireAdmin("products");
   const categories = await prisma.category.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     select: { id: true, name: true },

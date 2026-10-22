@@ -33,6 +33,9 @@ model Product {
   originalPriceInr Int? // crossed-out price; a colour's priceDelta applies to both
   zoomClass        String? // optional crop for photos with a white frame baked in
   isActive         Boolean  @default(true) // hide a product without deleting it
+  // Search-engine overrides set in the admin SEO panel; empty means use the name / description
+  seoTitle         String?
+  seoDescription   String?
   sortOrder        Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -49,13 +52,13 @@ model Product {
 }
 
 model ProductColor {
-  id         String  @id @default(cuid())
+  id         String @id @default(cuid())
   productId  String
   slug       String // e.g. "smoked-oak"; saved carts refer to a colour by this
   name       String
   hex        String
-  priceDelta Int     @default(0) // added to the product price when chosen
-  sortOrder  Int     @default(0) // the first colour is the default
+  priceDelta Int    @default(0) // added to the product price when chosen
+  sortOrder  Int    @default(0) // the first colour is the default
 
   product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   images  ProductImage[]
@@ -114,8 +117,8 @@ model Review {
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@index([productId, status])
   @@unique([userId, productId]) // one review per customer per product
+  @@index([productId, status])
   @@map("reviews")
 }
 
@@ -127,20 +130,20 @@ enum CouponType {
 }
 
 model Coupon {
-  code        String     @id // stored upper case
-  description String
-  type        CouponType
-  value       Int // percent (e.g. 10) or rupees off
-  minOrder    Int? // order subtotal needed, in rupees
-  maxDiscount Int? // cap for percent coupons, in rupees
+  code               String     @id // stored upper case
+  description        String
+  type               CouponType
+  value              Int // percent (e.g. 10) or rupees off
+  minOrder           Int? // order subtotal needed, in rupees
+  maxDiscount        Int? // cap for percent coupons, in rupees
   // Personal coupon: only these customer emails (lower case) may use it. Empty = anyone.
   // Never sent to the browser.
-  allowedEmails String[] @default([])
+  allowedEmails      String[]   @default([])
   maxUses            Int? // total uses across all customers; empty = unlimited
   maxUsesPerCustomer Int? // uses per customer email, e.g. 1 = once each; empty = unlimited
-  isActive    Boolean    @default(true)
-  expiresAt   DateTime?
-  createdAt   DateTime   @default(now())
+  isActive           Boolean    @default(true)
+  expiresAt          DateTime?
+  createdAt          DateTime   @default(now())
 
   @@map("coupons")
 }
@@ -193,17 +196,17 @@ model Order {
 
   subtotal       Int
   couponCode     String? // copied, not linked, so deleting a coupon keeps old orders intact
-  discount       Int     @default(0)
+  discount       Int           @default(0)
   total          Int
   deposit        Int
   depositPercent Int
   paymentMethod  PaymentMethod @default(advance)
 
-  razorpayOrderId   String?   @unique
-  razorpayPaymentId String?
-  paidAt            DateTime?
+  razorpayOrderId          String?   @unique
+  razorpayPaymentId        String?
+  paidAt                   DateTime?
   // The balance, when the customer pays it online from "My account"
-  balanceRazorpayOrderId   String? @unique
+  balanceRazorpayOrderId   String?   @unique
   balanceRazorpayPaymentId String?
 
   fulfillment   FulfillmentStatus @default(new)
@@ -338,4 +341,83 @@ model Address {
 
   @@index([userId])
   @@map("addresses")
+}
+
+// ─── Admin team ─────────────────────────────────────────────────────────────
+// Emails in ADMIN_EMAILS are always owners. Everyone else gets admin access only through a row
+// here, and sees just the sections of their role (src/lib/admin-auth.ts).
+
+enum StaffRole {
+  owner
+  seo
+  orders
+  content
+  blog
+}
+
+model StaffMember {
+  email     String    @id // lower-case; they sign in at /admin/login with this account
+  role      StaffRole
+  addedBy   String
+  createdAt DateTime  @default(now())
+
+  @@map("staff_members")
+}
+
+// ─── SEO ────────────────────────────────────────────────────────────────────
+
+// Site-wide search settings: a single row with id "site"
+model SeoSettings {
+  id                 String   @id @default("site")
+  siteName           String   @default("Averto")
+  defaultTitle       String   @default("")
+  defaultDescription String   @default("")
+  ogImage            String? // shown when a page is shared; a bucket path or /public file
+  googleVerification String   @default("") // Search Console HTML-tag code
+  bingVerification   String   @default("")
+  updatedAt          DateTime @updatedAt
+
+  @@map("seo_settings")
+}
+
+// Title and description for a fixed page of the shop, e.g. "/" or "/collections"
+model PageSeo {
+  path        String   @id
+  title       String   @default("")
+  description String   @default("")
+  ogImage     String?
+  noindex     Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@map("page_seo")
+}
+
+// ─── Blog ───────────────────────────────────────────────────────────────────
+
+enum PostStatus {
+  draft
+  published
+}
+
+model BlogPost {
+  id             String     @id @default(cuid())
+  slug           String     @unique
+  title          String
+  excerpt        String     @default("") // shown on the blog list and as the fallback description
+  content        Json // Tiptap document, rendered by src/components/blog/PostContent.tsx
+  coverImage     String? // bucket path
+  coverAlt       String     @default("")
+  tags           String[]
+  productIds     String[] // related products shown under the post
+  status         PostStatus @default(draft)
+  publishedAt    DateTime?
+  authorName     String
+  authorEmail    String // the admin who created it
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("blog_posts")
 }

@@ -4,7 +4,10 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ProductDetail from "@/components/products/ProductDetail";
 import ScrollProgress from "@/components/motion/ScrollProgress";
+import JsonLd from "@/components/seo/JsonLd";
 import { getCategories, getProduct, getProducts, getRelatedProducts, getReviews } from "@/lib/catalog";
+import { clip, pageMetadata } from "@/lib/seo";
+import { breadcrumbLd, productLd } from "@/lib/structured-data";
 
 // Pages are built ahead of time and refreshed from the database at most every 5 minutes.
 // Products added later are built on their first visit.
@@ -23,15 +26,11 @@ export async function generateMetadata({
   const product = await getProduct(slug);
   if (!product) return { title: "Piece not found | Averto" };
 
-  return {
-    title: `${product.name} | Averto`,
-    description: product.description,
-    openGraph: {
-      title: `${product.name} | Averto`,
-      description: product.description,
-      images: [{ url: product.image }],
-    },
-  };
+  return pageMetadata(`/products/${product.id}`, {
+    title: product.seoTitle || `${product.name} | Averto`,
+    description: product.seoDescription || clip(product.description),
+    image: product.image,
+  });
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -44,13 +43,26 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getReviews(product.id),
   ]);
 
+  const category = categories.find((c) => c.id === product.category);
+
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex flex-col pb-16 lg:pb-0">
+      <JsonLd
+        data={[
+          productLd(product, product.seoDescription || product.description, reviews),
+          breadcrumbLd([
+            { name: "Home", path: "/" },
+            { name: "Collections", path: "/collections" },
+            ...(category ? [{ name: category.name, path: `/collections?category=${category.id}` }] : []),
+            { name: product.name, path: `/products/${product.id}` },
+          ]),
+        ]}
+      />
       <ScrollProgress />
       <Navbar />
       <ProductDetail
         product={product}
-        category={categories.find((c) => c.id === product.category)}
+        category={category}
         related={related}
         reviews={reviews}
       />

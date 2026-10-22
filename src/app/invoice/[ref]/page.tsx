@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCustomer } from "@/lib/customer-auth";
-import { getAdmin } from "@/lib/admin-auth";
+import { getAdminFor } from "@/lib/admin-auth";
 import { formatPrice } from "@/data/collections";
 import { BUSINESS } from "@/data/business";
 import { PAYMENT_METHOD_NAME } from "@/data/store";
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 // PLACEHOLDER layout: confirm the GST invoice format (HSN codes, tax split) with your CA before launch.
 export default async function InvoicePage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
-  const [customer, admin] = await Promise.all([getCustomer(), getAdmin()]);
+  const [customer, admin] = await Promise.all([getCustomer(), getAdminFor("orders")]);
   if (!customer && !admin) redirect(`/login?next=${encodeURIComponent(`/invoice/${ref}`)}`);
 
   const order = await prisma.order.findFirst({

@@ -14,7 +14,7 @@ const TABS: { value: ReviewStatus; label: string }[] = [
 ];
 
 export default async function AdminReviewsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  await requireAdmin();
+  await requireAdmin("reviews");
   const { status: requested } = await searchParams;
   const status = TABS.find((t) => t.value === requested)?.value ?? "pending";
 
