@@ -1,8 +1,9 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useRef } from "react";
 import Link from "next/link";
-import { signUpCustomer, type AuthFormState } from "@/app/actions/account";
+import { signUpCustomer, verifySignupCode, type AuthFormState } from "@/app/actions/account";
+import { CodeInput, ResendButton } from "./CodeStep";
 
 const inputClass =
   "w-full rounded-sm border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-stone-900 transition-colors";
@@ -11,6 +12,11 @@ type Field = "name" | "email" | "phone" | "password" | "confirm";
 
 export default function RegisterForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(signUpCustomer, {});
+  // The filled-in form, so "send a new code" can repeat the signup without retyping
+  const lastForm = useRef<FormData | null>(null);
+  const resend = () => {
+    if (lastForm.current) startTransition(() => action(lastForm.current!));
+  };
   const errors = state.fieldErrors ?? {};
 
   const field = (name: Field, label: string, props: React.InputHTMLAttributes<HTMLInputElement>) => (
@@ -30,14 +36,8 @@ export default function RegisterForm({ next }: { next: string }) {
     </div>
   );
 
-  if (state.notice) {
-    return (
-      <div className="w-full max-w-md mx-auto text-center">
-        <h1 className="font-serif text-4xl sm:text-5xl text-[#111110]">Check your email</h1>
-        <p className="mt-5 text-stone-700">{state.notice}</p>
-        <p className="mt-3 text-sm text-stone-500">No email after a few minutes? Look in spam, or try registering again.</p>
-      </div>
-    );
+  if (state.step === "verify" && state.values?.email) {
+    return <VerifyStep email={state.values.email} next={next} sendError={state.error} resend={resend} sending={pending} />;
   }
 
   return (
@@ -49,6 +49,7 @@ export default function RegisterForm({ next }: { next: string }) {
         onSubmit={(e) => {
           e.preventDefault();
           const formData = new FormData(e.currentTarget);
+          lastForm.current = formData;
           startTransition(() => action(formData));
         }}
         noValidate
@@ -83,6 +84,66 @@ export default function RegisterForm({ next }: { next: string }) {
           Login
         </Link>
       </p>
+    </div>
+  );
+}
+
+// Second step: the code from the email confirms the address and signs the customer in
+function VerifyStep({
+  email,
+  next,
+  sendError,
+  resend,
+  sending,
+}: {
+  email: string;
+  next: string;
+  sendError?: string;
+  resend: () => void;
+  sending: boolean;
+}) {
+  const [state, action, pending] = useActionState<AuthFormState, FormData>(verifySignupCode, {});
+
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <h1 className="font-serif text-4xl sm:text-5xl text-[#111110] text-center">Check your email</h1>
+      <p className="mt-3 text-sm text-stone-500 text-center">
+        We sent a code to <span className="text-stone-900 font-medium">{email}</span>. It can take a minute; look in spam
+        too.
+      </p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.currentTarget);
+          startTransition(() => action(formData));
+        }}
+        noValidate
+        className="mt-10 space-y-5"
+      >
+        <input type="hidden" name="email" value={email} />
+        <input type="hidden" name="next" value={next} />
+        {(state.error ?? sendError) && (
+          <p role="alert" className="rounded-sm bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+            {state.error ?? sendError}
+          </p>
+        )}
+        <CodeInput error={state.fieldErrors?.code} />
+        <button
+          type="submit"
+          disabled={pending}
+          className="w-full py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] disabled:opacity-60 text-white text-sm font-medium cursor-pointer transition-colors"
+        >
+          {pending ? "Checking…" : "Confirm and continue"}
+        </button>
+      </form>
+
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <ResendButton onResend={resend} pending={sending} />
+        <a href="/register" className="text-sm text-stone-500 hover:text-stone-900">
+          Use a different email
+        </a>
+      </div>
     </div>
   );
 }

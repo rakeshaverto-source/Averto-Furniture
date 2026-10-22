@@ -63,7 +63,7 @@ export default function Footer() {
               <li><a href="#materials" className="hover:text-stone-900 transition-colors">Materials</a></li>
               <li><a href="#bespoke" className="hover:text-stone-900 transition-colors">Made to order</a></li>
               <li><a href="#trade" className="hover:text-stone-900 transition-colors">For architects</a></li>
-              <li><a href="/blog" className="hover:text-stone-900 transition-colors">Journal</a></li>
+              <li><Link href="/blog" className="hover:text-stone-900 transition-colors">Journal</Link></li>
             </ul>
           </div>
 
