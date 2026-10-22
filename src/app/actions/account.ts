@@ -53,27 +53,31 @@ export async function signUpCustomer(_prev: AuthFormState, formData: FormData): 
   // Supabase makes the account and its one-time code without sending any email; we send the code
   // ourselves from the shop's Gmail. Nothing is signed in until the code is entered.
   const admin = supabaseAdmin().auth.admin;
-  let { data, error } = await admin.generateLink({
-    type: "signup",
-    email,
-    password,
-    options: { data: { full_name: name, phone } },
-  });
-  const exists = error?.code === "email_exists" || error?.code === "user_already_exists";
-  // The email is taken: a sign-in code for it tells us whether that account was ever confirmed
-  if (exists) ({ data, error } = await admin.generateLink({ type: "magiclink", email }));
+  const taken = (code?: string) => code === "email_exists" || code === "user_already_exists";
+  // A signup code for a new or never-confirmed email; a sign-in code when Supabase says it is taken
+  const newCode = async () => {
+    const signup = await admin.generateLink({ type: "signup", email, password, options: { data: { full_name: name, phone } } });
+    return taken(signup.error?.code) ? admin.generateLink({ type: "magiclink", email }) : signup;
+  };
+
+  let { data, error } = await newCode();
   if (error || !data.properties?.email_otp) {
     const weak = error?.code === "weak_password" || /password/i.test(error?.message ?? "");
     return { error: weak ? "Please choose a stronger password." : "We could not create the account. Please try again.", values };
   }
   try {
-    if (exists && data.user.email_confirmed_at) {
+    if (data.user.email_confirmed_at) {
       // A real account already: same screen as a new signup, so the form doesn't reveal which
       // emails have accounts, and the owner gets a note instead of a code
       await sendMail({ to: email, ...existingAccountEmail(await siteOrigin()) });
     } else {
-      // New, or registered before but never confirmed: keep the details from this latest attempt
-      await admin.updateUserById(data.user.id, { password, user_metadata: { full_name: name, phone } });
+      // Registered before but never confirmed: keep the details from this latest attempt. Saving a
+      // password cancels any code already issued, so the code that is emailed is made after it.
+      if (Date.now() - new Date(data.user.created_at).getTime() > 60_000) {
+        await admin.updateUserById(data.user.id, { password, user_metadata: { full_name: name, phone } });
+        ({ data, error } = await newCode());
+        if (error || !data.properties?.email_otp) throw error ?? new Error("No code after updating the account");
+      }
       await sendMail({ to: email, ...codeEmail("signup", data.properties.email_otp) });
     }
   } catch (e) {
