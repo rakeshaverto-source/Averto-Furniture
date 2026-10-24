@@ -16,10 +16,13 @@ export async function proxy(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
+  const userAgent = request.headers.get("user-agent");
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      // The browser's name, so a refreshed login keeps showing the right device (see supabase/server.ts)
+      global: { headers: userAgent ? { "User-Agent": userAgent.slice(0, 400) } : {} },
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll(cookiesToSet, headers) {

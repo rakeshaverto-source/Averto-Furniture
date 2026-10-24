@@ -15,6 +15,12 @@ export default async function DriverHomePage() {
       orderBy: [{ expectedDelivery: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
     })
   ).map(toDriverOrder);
+  // Returns the office has given this driver to collect
+  const pickups = await prisma.returnRequest.findMany({
+    where: { driverId: driver.id, status: "pickup_scheduled" },
+    include: { order: { select: { ref: true, customerName: true, address: true, locality: true, city: true } } },
+    orderBy: [{ pickupDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+  });
 
   return (
     <div>
@@ -68,6 +74,36 @@ export default async function DriverHomePage() {
           </li>
         )}
       </ul>
+
+      {pickups.length > 0 && (
+        <>
+          <h2 className="mt-8 font-serif text-2xl text-[#111110]">Return pickups</h2>
+          <ul className="mt-3 space-y-3">
+            {pickups.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/driver/pickup/${p.order.ref}`}
+                  className="block rounded-2xl border border-indigo-200 bg-white p-4 hover:border-indigo-700 transition-colors"
+                >
+                  <span className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-stone-500">{p.order.ref}</span>
+                    <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-800">Pickup</span>
+                  </span>
+                  <span className="mt-1.5 block text-lg font-semibold text-stone-900">{p.order.customerName}</span>
+                  <span className="block text-stone-500 line-clamp-2">
+                    {[p.order.address, p.order.locality, p.order.city].filter(Boolean).join(", ")}
+                  </span>
+                  {(p.pickupDate || p.pickupSlot) && (
+                    <span className="mt-2 block font-medium text-stone-900">
+                      {[p.pickupDate && formatDate(p.pickupDate), p.pickupSlot].filter(Boolean).join(", ")}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <p className="mt-8 rounded-xl border border-stone-200 p-4 text-sm text-stone-600">
         On this website, your location is shared only while the delivery page is open and the screen is on. For

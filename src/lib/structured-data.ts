@@ -15,7 +15,7 @@ export function organizationLd(siteName: string) {
     "@id": `${SITE_URL}/#store`,
     name: siteName,
     url: SITE_URL,
-    logo: absoluteUrl("/Logo.png"),
+    logo: absoluteUrl("/averto-logo.png"),
     image: absoluteUrl("/hero/curated-living-space.jpg"),
     email: real(BUSINESS.email),
     telephone: real(BUSINESS.phone),

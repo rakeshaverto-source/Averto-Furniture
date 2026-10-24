@@ -70,3 +70,14 @@ export function existingAccountEmail(siteUrl: string) {
     text: `You already have an account\n\n${message}\n\n${footer}`,
   };
 }
+
+// Sent when the team moves a customer's return along (approved, pickup fixed, refunded…)
+export function returnUpdateEmail(o: { ref: string; heading: string; message: string; siteUrl: string }) {
+  const message = `${o.message} See the details at ${o.siteUrl}/account/orders/${o.ref}.`;
+  const footer = `This is about your return for order ${o.ref}. Reply to this email or call us if anything is unclear.`;
+  return {
+    subject: `${o.heading} · order ${o.ref}`,
+    html: layout({ heading: o.heading, message, footer }),
+    text: `${o.heading}\n\n${message}\n\n${footer}`,
+  };
+}

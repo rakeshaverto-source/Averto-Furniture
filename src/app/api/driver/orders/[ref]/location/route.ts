@@ -1,6 +1,8 @@
 // The driver app's position, sent about every 30 seconds while an order is out for delivery. Only the
 // latest point is kept. A 409 tells the app to stop tracking this order.
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pinOrderDrop } from "@/lib/geo";
 import { getDriver } from "@/lib/driver-auth";
 import { fail } from "@/lib/driver-orders";
 
@@ -25,5 +27,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ref
     data: { driverLat: lat, driverLng: lng, driverLocationAt: at },
   });
   if (count === 0) return fail(409, "This order is no longer out for delivery.");
+
+  // The first reading is where the delivery set off from: it becomes the pickup on the customer's
+  // map, and the customer's address is looked up for the drop pin once the app has its answer
+  const started = await prisma.order.updateMany({ where: { ref, pickupLat: null }, data: { pickupLat: lat, pickupLng: lng } });
+  if (started.count) after(() => pinOrderDrop(ref));
   return Response.json({ ok: true });
 }

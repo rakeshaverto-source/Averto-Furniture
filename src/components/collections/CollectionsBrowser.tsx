@@ -337,7 +337,7 @@ export default function CollectionsBrowser({
               </button>
             </div>
 
-            <div className="flex items-center gap-1 overflow-x-auto" role="group" aria-label="Sort by">
+            <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Sort by">
               <span className="text-xs uppercase tracking-wider font-bold text-stone-900 mr-2 shrink-0">
                 Sort By
               </span>

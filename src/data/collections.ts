@@ -37,6 +37,9 @@ export interface CollectionProduct {
   priceInr: number; // price the customer pays (the discounted price), for the first (default) colour
   // SAMPLE "original" price shown crossed out above priceInr; a colour's priceDelta applies to both
   originalPriceInr?: number;
+  // Usual days from order to delivery, set in admin; shown as estimated dates on the product page
+  deliveryMinDays?: number;
+  deliveryMaxDays?: number;
   // SAMPLE options for previewing the selector; replace with the real finishes and prices
   colors?: ProductColor[];
   image: string;
@@ -47,6 +50,11 @@ export interface CollectionProduct {
   // Search-engine title and description from the admin SEO panel
   seoTitle?: string;
   seoDescription?: string;
+  // Ticked in admin to appear under "Selected pieces" on the home page
+  onHomePage?: boolean;
+  // A slide in the home page's signature slider (Admin → Home slider), and its place there
+  inShowcase?: boolean;
+  showcaseOrder?: number;
 }
 
 const inr = new Intl.NumberFormat("en-IN", {

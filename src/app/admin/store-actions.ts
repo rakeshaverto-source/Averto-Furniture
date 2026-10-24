@@ -1,15 +1,20 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath, updateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slug";
-import { FULFILLMENT } from "@/lib/admin-format";
+import { FULFILLMENT, formatDate } from "@/lib/admin-format";
 import { normaliseEmail } from "@/data/coupons";
 import { refreshOrders, saveOrderChange } from "@/lib/order-status";
 import { hashPin, isValidPin, normalisePhone } from "@/lib/driver-auth";
-import type { FulfillmentStatus } from "@/generated/prisma/client";
+import { pinOrderDrop } from "@/lib/geo";
+import { returnUpdateEmail, sendMail } from "@/lib/mailer";
+import { SITE_URL } from "@/lib/seo";
+import { RETURN_STATUSES } from "@/data/returns";
+import type { FulfillmentStatus, ReturnStatus } from "@/generated/prisma/client";
 
 const text = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
 const refreshAdmin = () => revalidatePath("/admin", "layout");
@@ -59,6 +64,82 @@ export async function updateOrder(_prev: FormState, formData: FormData): Promise
   });
   refreshOrders();
   return { ok: "Order updated." };
+}
+
+// ─── Returns ────────────────────────────────────────────────────────────────
+
+const isReturnStatus = (value: string): value is ReturnStatus => RETURN_STATUSES.some((s) => s.value === value);
+
+// Moves a customer's return along: decide, fix the pickup, mark it collected and refunded.
+// The customer gets an email whenever the status changes.
+export async function updateReturn(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin("orders");
+  const id = text(formData, "id");
+  const status = text(formData, "status");
+  if (!isReturnStatus(status)) return { error: "Choose a status." };
+  const request = await prisma.returnRequest.findUnique({ where: { id }, include: { order: true } });
+  if (!request) return { error: "This return no longer exists." };
+
+  const pickup = text(formData, "pickupDate");
+  if (pickup && !/^\d{4}-\d{2}-\d{2}$/.test(pickup)) return { error: "Enter a valid pickup date." };
+  if (status === "pickup_scheduled" && !pickup) return { error: "Choose the pickup date." };
+
+  const driverId = text(formData, "driverId");
+  const driver = driverId ? await prisma.driver.findUnique({ where: { id: driverId } }) : null;
+  if (driverId && !driver) return { error: "That driver no longer exists." };
+  if (driver && !driver.isActive && request.driverId !== driver.id) return { error: `${driver.name} is turned off.` };
+
+  const refundRaw = text(formData, "refundAmount");
+  const refundAmount = refundRaw ? Number(refundRaw) : null;
+  if (refundAmount !== null && (!Number.isInteger(refundAmount) || refundAmount < 1 || refundAmount > request.order.total)) {
+    return { error: `The refund should be a whole amount up to ${request.order.total.toLocaleString("en-IN")}.` };
+  }
+  if (status === "refunded" && refundAmount === null) return { error: "Enter the amount refunded." };
+
+  const teamMessage = text(formData, "teamMessage").slice(0, 1000);
+  if (status === "rejected" && !teamMessage) return { error: "Tell the customer why the return was declined." };
+
+  const now = new Date();
+  const changed = status !== request.status;
+  await prisma.returnRequest.update({
+    where: { id },
+    data: {
+      status,
+      teamMessage,
+      adminNote: text(formData, "adminNote").slice(0, 2000),
+      pickupDate: pickup ? new Date(`${pickup}T00:00:00Z`) : null,
+      pickupSlot: text(formData, "pickupSlot").slice(0, 40),
+      driverId: driver?.id ?? null,
+      driverName: driver?.name ?? "",
+      driverPhone: driver?.phone ?? "",
+      vehicleNumber: driver?.vehicleNumber ?? "",
+      refundAmount,
+      decidedAt: status === "requested" ? null : (request.decidedAt ?? now),
+      pickedUpAt: status === "picked_up" || status === "refunded" ? (request.pickedUpAt ?? now) : null,
+      refundedAt: status === "refunded" ? (request.refundedAt ?? now) : null,
+    },
+  });
+
+  if (changed && status !== "requested") {
+    const info = RETURN_STATUSES.find((s) => s.value === status)!;
+    const pickupText = [pickup && formatDate(new Date(`${pickup}T00:00:00Z`)), text(formData, "pickupSlot")].filter(Boolean).join(", ");
+    const message =
+      status === "pickup_scheduled" && pickupText
+        ? `We'll collect the piece on ${pickupText}${driver ? `; ${driver.name} (${driver.phone}) will come by` : ""}. ${info.hint}`
+        : status === "refunded" && refundAmount
+          ? `We've refunded ₹${refundAmount.toLocaleString("en-IN")}. ${info.hint}`
+          : `${info.hint}${teamMessage ? ` Note from our team: ${teamMessage}` : ""}`;
+    const to = request.order.customerEmail;
+    after(async () => {
+      try {
+        await sendMail({ to, ...returnUpdateEmail({ ref: request.order.ref, heading: info.label, message, siteUrl: SITE_URL }) });
+      } catch (e) {
+        console.error("Return update email not sent", e);
+      }
+    });
+  }
+  refreshOrders();
+  return { ok: changed ? "Saved. An email to the customer is on its way." : "Saved." };
 }
 
 // ─── Drivers ────────────────────────────────────────────────────────────────
@@ -156,6 +237,8 @@ export async function updateOrderDetails(_prev: FormState, formData: FormData): 
   const deposit = advancePaid ? order.deposit : Math.round((total * order.depositPercent) / 100);
   // More to pay than before means the balance is no longer settled
   const stillSettled = order.balancePaid && total <= order.total;
+  // A changed address no longer matches the drop pin on the map, so it is looked up again
+  const moved = (["address", "locality", "city", "state", "pincode"] as const).some((k) => customer[k] !== order[k]);
 
   await prisma.$transaction([
     ...items.map((i) =>
@@ -173,9 +256,11 @@ export async function updateOrderDetails(_prev: FormState, formData: FormData): 
         deposit,
         balancePaid: stillSettled,
         balancePaidAt: stillSettled ? order.balancePaidAt : null,
+        ...(moved ? { dropLat: null, dropLng: null } : {}),
       },
     }),
   ]);
+  if (moved) after(() => pinOrderDrop(order.ref));
   refreshOrders();
   const overpaid = (advancePaid ? deposit : 0) - total;
   return {
@@ -294,17 +379,22 @@ export async function saveCategory(_prev: FormState, formData: FormData): Promis
   const id = existing || slugify(name);
   const blurb = text(formData, "blurb");
   const sortOrder = Number(text(formData, "sortOrder") || 0);
+  // An uploaded photo (categories/…) or one of the sample photos in /public
+  const image = text(formData, "image");
+  const onHomePage = formData.get("onHomePage") === "on";
 
   if (name.length < 2 || name.length > 40) return { error: "Name should be 2 to 40 characters." };
   if (!id) return { error: "Use letters or numbers in the name." };
   if (blurb.length > 160) return { error: "Keep the short description under 160 characters." };
   if (!Number.isInteger(sortOrder)) return { error: "Position must be a whole number." };
+  if (image && !/^(categories\/[\w-]+\.webp|\/hero\/[\w.-]+)$/.test(image)) return { error: "Upload the photo again." };
 
+  const data = { name, blurb, sortOrder, image, onHomePage };
   if (existing) {
-    await prisma.category.update({ where: { id }, data: { name, blurb, sortOrder } });
+    await prisma.category.update({ where: { id }, data });
   } else {
     if (await prisma.category.findUnique({ where: { id } })) return { error: "A category with this name already exists." };
-    await prisma.category.create({ data: { id, name, blurb, sortOrder } });
+    await prisma.category.create({ data: { id, ...data } });
   }
   updateTag("catalog");
   refreshAdmin();

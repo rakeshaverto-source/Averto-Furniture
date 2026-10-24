@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { NewPasswordForm } from "@/components/auth/PasswordForms";
+import { ChangePasswordForm } from "@/components/auth/PasswordForms";
 import { requireCustomer } from "@/lib/customer-auth";
 
-// Reached from the reset link (which signs the customer in) or from the profile page
+// Reached from the profile page; the change needs a code from the account's email
 export default async function NewPasswordPage() {
   const customer = await requireCustomer("/account/password");
   return (
@@ -12,7 +12,7 @@ export default async function NewPasswordPage() {
       </Link>
       <h2 className="mt-2 font-serif text-3xl text-[#111110]">New password</h2>
       <p className="mt-1 text-sm text-stone-500">For {customer.email}</p>
-      <NewPasswordForm />
+      <ChangePasswordForm email={customer.email} />
     </div>
   );
 }

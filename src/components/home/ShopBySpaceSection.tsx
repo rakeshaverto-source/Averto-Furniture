@@ -116,21 +116,16 @@ function SpaceCard({ card, idx }: { card: LifestyleCard; idx: number }) {
         href={card.href}
         className="group relative block aspect-[4/4] sm:aspect-[4/4.2] rounded-2xl overflow-hidden shadow-lg border border-stone-200/60 hover:shadow-2xl transition-all duration-500"
       >
-        {/* Photo + overlay open like a curtain from the bottom edge */}
-        <m.div
-          className="absolute inset-0 z-0"
-          initial={{ clipPath: "inset(100% 0% 0% 0%)" }}
-          whileInView={{ clipPath: "inset(0% 0% 0% 0%)" }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 1.1, delay: stagger, ease }}
-        >
+        {/* Photo + overlay. Always visible: a curtain reveal that waited for the card to scroll into view
+            left some photos hidden on phones, so the photo only settles from a slight zoom instead. */}
+        <div className="absolute inset-0 z-0">
           {/* Background Image (taller than the card so parallax never shows an edge) */}
           <m.div className="absolute inset-x-0 -top-[8%] -bottom-[8%]" style={{ y: imageY }}>
             <m.div
               className="absolute inset-0"
-              initial={{ scale: 1.2 }}
+              initial={{ scale: 1.12 }}
               whileInView={{ scale: 1 }}
-              viewport={{ once: true, margin: "-80px" }}
+              viewport={{ once: true }}
               transition={{ duration: 1.4, delay: stagger, ease }}
             >
               <Image
@@ -138,6 +133,8 @@ function SpaceCard({ card, idx }: { card: LifestyleCard; idx: number }) {
                 alt={card.alt}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
+                // Start fetching well before the card is reached, so it isn't blank on a slow connection
+                loading="eager"
                 className="object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
               />
             </m.div>
@@ -145,7 +142,7 @@ function SpaceCard({ card, idx }: { card: LifestyleCard; idx: number }) {
 
           {/* Rich Warm Ambient Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/40 via-45% to-stone-900/10 group-hover:from-stone-950/90 transition-all duration-500" />
-        </m.div>
+        </div>
 
         {/* Foreground Editorial Text Content */}
         <m.div

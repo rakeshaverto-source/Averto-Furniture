@@ -5,7 +5,9 @@ import { ImagePlus, X } from "lucide-react";
 import { secondaryButton } from "./ui";
 
 // Sends one image to the media upload route and keeps its storage path in a hidden form field
-export async function uploadMedia(file: File, folder: "blog" | "seo") {
+export type MediaFolder = "blog" | "seo" | "categories";
+
+export async function uploadMedia(file: File, folder: MediaFolder) {
   const body = new FormData();
   body.append("folder", folder);
   body.append("file", file);
@@ -23,7 +25,7 @@ export default function ImageUpload({
   help,
 }: {
   name: string;
-  folder: "blog" | "seo";
+  folder: MediaFolder;
   initial?: { path: string; url: string };
   label: string;
   help?: string;

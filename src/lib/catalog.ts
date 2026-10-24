@@ -26,6 +26,27 @@ export const getCategories = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["catalog"] },
 );
 
+export interface HomeCategory {
+  id: string;
+  name: string;
+  image: string;
+  designs: number; // active products in it
+}
+
+// "Shop By Category" on the home page: the categories ticked for it that have a photo
+export const getHomeCategories = unstable_cache(
+  async (): Promise<HomeCategory[]> => {
+    const rows = await prisma.category.findMany({
+      where: { onHomePage: true, image: { not: "" } },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, image: true, _count: { select: { products: { where: { isActive: true } } } } },
+    });
+    return rows.map((c) => ({ id: c.id, name: c.name, image: imageUrl(c.image), designs: c._count.products }));
+  },
+  ["home-categories"],
+  { revalidate: CACHE_SECONDS, tags: ["catalog"] },
+);
+
 // Every active product, in shop order. Fine as one list for a catalogue of a few hundred pieces.
 export const getProducts = unstable_cache(
   async (): Promise<CollectionProduct[]> => {
@@ -53,6 +74,8 @@ export const getProducts = unstable_cache(
           specs: p.specs,
           priceInr: p.priceInr,
           originalPriceInr: p.originalPriceInr ?? undefined,
+          deliveryMinDays: p.deliveryMinDays ?? undefined,
+          deliveryMaxDays: p.deliveryMaxDays ?? undefined,
           image: imageUrl(main.path),
           gallery: photos
             .filter((img) => img !== main)
@@ -72,6 +95,9 @@ export const getProducts = unstable_cache(
           zoomClass: p.zoomClass ?? undefined,
           seoTitle: p.seoTitle ?? undefined,
           seoDescription: p.seoDescription ?? undefined,
+          onHomePage: p.onHomePage,
+          inShowcase: p.inShowcase,
+          showcaseOrder: p.showcaseOrder,
         },
       ];
     });

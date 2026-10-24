@@ -20,17 +20,17 @@ export default function OrderCard({ order }: { order: OrderCardData }) {
   return (
     <Link
       href={`/account/orders/${order.ref}`}
-      className="group block rounded-sm border border-stone-200 bg-white p-5 sm:p-6 transition-colors hover:border-stone-400"
+      className="group block rounded-sm border border-stone-200 bg-white p-4 sm:p-6 transition-colors hover:border-stone-400"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex -space-x-3">
           {order.items.slice(0, 3).map((item) => (
-            <span key={item.id} className="relative h-14 w-14 overflow-hidden rounded-sm bg-stone-100 ring-2 ring-white">
+            <span key={item.id} className="relative h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-sm bg-stone-100 ring-2 ring-white">
               {item.image && <Image src={item.image} alt="" fill sizes="56px" className="object-cover" />}
             </span>
           ))}
           {order.items.length > 3 && (
-            <span className="relative flex h-14 w-14 items-center justify-center rounded-sm bg-stone-100 text-xs font-medium text-stone-600 ring-2 ring-white">
+            <span className="relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-sm bg-stone-100 text-xs font-medium text-stone-600 ring-2 ring-white">
               +{order.items.length - 3}
             </span>
           )}
@@ -51,7 +51,7 @@ export default function OrderCard({ order }: { order: OrderCardData }) {
         </div>
         <ChevronRight className="w-5 h-5 shrink-0 text-stone-400 transition-transform group-hover:translate-x-0.5" />
       </div>
-      <div className="mt-5 pt-5 border-t border-stone-100">
+      <div className="mt-4 pt-4 sm:mt-5 sm:pt-5 border-t border-stone-100">
         <OrderTimeline status={order.fulfillment} compact />
       </div>
     </Link>

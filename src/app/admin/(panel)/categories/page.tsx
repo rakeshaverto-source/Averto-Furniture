@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 import { deleteCategory } from "@/app/admin/store-actions";
 import CategoryForm from "@/components/admin/CategoryForm";
+import { imageUrl } from "@/lib/catalog";
 import ConfirmButton from "@/components/admin/ConfirmButton";
 
 export default async function AdminCategoriesPage({ searchParams }: { searchParams: Promise<{ inuse?: string }> }) {
@@ -17,7 +18,7 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
   return (
     <div className="max-w-4xl">
       <h1 className="font-serif text-3xl text-[#111110]">Categories</h1>
-      <p className="mt-1 text-sm text-stone-500">Shown as filters on the collections page, in this order (lower position first).</p>
+      <p className="mt-1 text-sm text-stone-500">Shown as filters on the collections page and, with a photo, under “Shop By Category” on the home page, in this order (lower position first).</p>
 
       {blocked && (
         <p role="alert" className="mt-5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">
@@ -36,7 +37,16 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
           <li key={c.id} className="rounded-2xl border border-stone-200 bg-white">
             <details>
               <summary className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-4 cursor-pointer list-none">
+                {c.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- a small admin thumbnail
+                  <img src={imageUrl(c.image)} alt="" className="h-10 w-10 rounded-lg object-cover border border-stone-200" />
+                ) : (
+                  <span className="h-10 w-10 rounded-lg border border-dashed border-stone-300" aria-hidden />
+                )}
                 <span className="font-medium text-stone-900">{c.name}</span>
+                {c.onHomePage && c.image && (
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">On home page</span>
+                )}
                 <span className="text-sm text-stone-500 truncate max-w-md">{c.blurb}</span>
                 <Link
                   href={`/collections?category=${c.id}`}
@@ -47,7 +57,16 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
                 </Link>
               </summary>
               <div className="border-t border-stone-200 px-5 py-5">
-                <CategoryForm category={{ id: c.id, name: c.name, blurb: c.blurb, sortOrder: c.sortOrder }} />
+                <CategoryForm
+                  category={{
+                    id: c.id,
+                    name: c.name,
+                    blurb: c.blurb,
+                    sortOrder: c.sortOrder,
+                    onHomePage: c.onHomePage,
+                    image: c.image ? { path: c.image, url: imageUrl(c.image) } : undefined,
+                  }}
+                />
                 <form action={deleteCategory} className="mt-4 flex justify-end">
                   <input type="hidden" name="id" value={c.id} />
                   <ConfirmButton

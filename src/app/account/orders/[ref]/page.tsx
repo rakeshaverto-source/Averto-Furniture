@@ -15,6 +15,9 @@ import OrderTimeline from "@/components/account/OrderTimeline";
 import LiveDeliveryMap from "@/components/account/LiveDeliveryMap";
 import PayBalanceButton from "@/components/account/PayBalanceButton";
 import AccountReviewForm from "@/components/account/AccountReviewForm";
+import ReturnRequestForm from "@/components/account/ReturnRequestForm";
+import ReturnStatusCard from "@/components/account/ReturnStatusCard";
+import { returnDeadline, withinReturnWindow } from "@/data/returns";
 
 export default async function MyOrderPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
@@ -22,9 +25,12 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
   // Only the customer's own orders
   const order = await prisma.order.findFirst({
     where: { ref, userId: customer.id },
-    include: { items: true, events: { orderBy: { createdAt: "asc" } } },
+    include: { items: true, events: { orderBy: { createdAt: "asc" } }, returnRequest: true },
   });
   if (!order) notFound();
+  // A return can be asked for until a week after delivery
+  const deadline = returnDeadline(order);
+  const canReturn = !order.returnRequest && withinReturnWindow(deadline);
 
   const [photos, reviewed] = await Promise.all([
     productPhotos(),
@@ -112,10 +118,13 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
             )}
           </div>
         )}
-        {order.fulfillment === "out_for_delivery" && order.driverId && (
+        {order.fulfillment === "out_for_delivery" && (order.driverId || order.pickupLat !== null) && (
           <LiveDeliveryMap orderRef={order.ref} driverPhone={order.driverPhone || undefined} />
         )}
       </section>
+
+      {order.returnRequest && <ReturnStatusCard orderRef={order.ref} request={order.returnRequest} />}
+      {canReturn && deadline && <ReturnRequestForm orderRef={order.ref} deadline={formatDateTime(deadline)} />}
 
       <div className="grid xl:grid-cols-[1fr_20rem] gap-6 items-start">
         <section className="rounded-sm bg-white border border-stone-200">

@@ -13,11 +13,14 @@ datasource db {
 // ─── Catalogue ──────────────────────────────────────────────────────────────
 
 model Category {
-  id        String    @id // slug used in URLs, e.g. "sofas"
-  name      String
-  blurb     String
-  sortOrder Int       @default(0)
-  products  Product[]
+  id         String    @id // slug used in URLs, e.g. "sofas"
+  name       String
+  blurb      String
+  sortOrder  Int       @default(0)
+  // The round photo under "Shop By Category" on the home page; a bucket path, or /public for samples
+  image      String    @default("")
+  onHomePage Boolean   @default(true)
+  products   Product[]
 
   @@map("categories")
 }
@@ -31,8 +34,14 @@ model Product {
   specs            String
   priceInr         Int // price the customer pays for the default colour
   originalPriceInr Int? // crossed-out price; a colour's priceDelta applies to both
+  // Usual time from order to delivery, in days; the product page turns it into estimated dates
+  deliveryMinDays  Int?
+  deliveryMaxDays  Int?
   zoomClass        String? // optional crop for photos with a white frame baked in
   isActive         Boolean  @default(true) // hide a product without deleting it
+  onHomePage       Boolean  @default(false) // listed under "Selected pieces" on the home page
+  inShowcase       Boolean  @default(false) // a slide in the "Signature Monolith Editions" slider on the home page (Admin → Home slider)
+  showcaseOrder    Int      @default(0) // order of those slides, lower first
   // Search-engine overrides set in the admin SEO panel; empty means use the name / description
   seoTitle         String?
   seoDescription   String?
@@ -230,12 +239,19 @@ model Order {
   driverLat        Float?
   driverLng        Float?
   driverLocationAt DateTime?
+  // For the customer's live map: where the delivery set off from (the driver app's first reading)
+  // and the customer's address as a pin, looked up from the address automatically
+  pickupLat        Float?
+  pickupLng        Float?
+  dropLat          Float?
+  dropLng          Float?
 
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  driver    Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
-  items     OrderItem[]
-  events    OrderEvent[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  driver        Driver?        @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  events        OrderEvent[]
+  returnRequest ReturnRequest?
 
   @@index([createdAt])
   @@index([fulfillment])
@@ -259,6 +275,7 @@ model Driver {
 
   sessions DriverSession[]
   orders   Order[]
+  pickups  ReturnRequest[]
 
   @@map("drivers")
 }
@@ -420,4 +437,59 @@ model BlogPost {
 
   @@index([status, publishedAt])
   @@map("blog_posts")
+}
+
+// ─── Returns ────────────────────────────────────────────────────────────────
+
+enum ReturnReason {
+  damaged // arrived damaged
+  defective // a fault in the making
+  wrong_item
+  not_as_described
+  changed_mind
+  other
+}
+
+enum ReturnStatus {
+  requested // waiting for the team
+  approved
+  pickup_scheduled
+  picked_up
+  refunded
+  rejected
+}
+
+// A customer's request, from "My account", to send back a delivered order. One per order;
+// the team approves it, arranges a pickup (often with one of our drivers) and records the refund.
+model ReturnRequest {
+  id          String       @id @default(cuid())
+  orderId     String       @unique
+  reason      ReturnReason
+  details     String
+  photos      String[]     @default([]) // paths under returns/<order id>/ in the "products" bucket
+  status      ReturnStatus @default(requested)
+  teamMessage String       @default("") // shown to the customer, e.g. why it was declined
+  adminNote   String       @default("") // for the team only
+
+  // The pickup, shown to the customer. Driver details are copied like on orders.
+  pickupDate    DateTime? @db.Date
+  pickupSlot    String    @default("")
+  driverId      String?
+  driverName    String    @default("")
+  driverPhone   String    @default("")
+  vehicleNumber String    @default("")
+
+  refundAmount Int?
+  decidedAt    DateTime? // approved or declined
+  pickedUpAt   DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([driverId])
+  @@map("return_requests")
 }

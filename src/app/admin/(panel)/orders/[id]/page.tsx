@@ -14,7 +14,10 @@ import {
 } from "@/lib/admin-format";
 import OrderStatusForm from "@/components/admin/OrderStatusForm";
 import OrderEditForm from "@/components/admin/OrderEditForm";
+import ReturnAdminForm from "@/components/admin/ReturnAdminForm";
 import LiveDeliveryMap from "@/components/account/LiveDeliveryMap";
+import { imageUrl } from "@/lib/catalog";
+import { returnReasonLabel, returnStatusInfo } from "@/data/returns";
 import { PAYMENT_METHOD_NAME } from "@/data/store";
 import { addressLines } from "@/lib/address";
 
@@ -23,11 +26,13 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: { orderBy: { id: "asc" } }, events: { orderBy: { createdAt: "asc" } } },
+    include: { items: { orderBy: { id: "asc" } }, events: { orderBy: { createdAt: "asc" } }, returnRequest: true },
   });
   if (!order) notFound();
+  const ret = order.returnRequest;
+  const keepDrivers = [order.driverId, ret?.driverId].filter((d): d is string => !!d);
   const drivers = await prisma.driver.findMany({
-    where: { OR: [{ isActive: true }, ...(order.driverId ? [{ id: order.driverId }] : [])] },
+    where: { OR: [{ isActive: true }, ...(keepDrivers.length ? [{ id: { in: keepDrivers } }] : [])] },
     select: { id: true, name: true, vehicleNumber: true, isActive: true },
     orderBy: { name: "asc" },
   });
@@ -63,6 +68,45 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
 
       <div className="mt-8 grid lg:grid-cols-[1fr_20rem] gap-6 items-start">
         <div className="space-y-6">
+          {ret && (
+            <section id="return" className="rounded-2xl border-2 border-amber-200 bg-white p-5 text-sm scroll-mt-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-medium text-stone-900">Return request</h2>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${returnStatusInfo(ret.status).tone}`}>
+                  {returnStatusInfo(ret.status).label}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-stone-500">Asked {formatDateTime(ret.createdAt)}</p>
+              <p className="mt-3 font-medium text-stone-900">{returnReasonLabel(ret.reason)}</p>
+              <p className="mt-1 text-stone-700 whitespace-pre-line">{ret.details}</p>
+              {ret.photos.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ret.photos.map((path) => (
+                    <a key={path} href={imageUrl(path)} target="_blank" rel="noopener noreferrer" title="Open full size">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- thumbnails of the customer's photos */}
+                      <img src={imageUrl(path)} alt="Customer photo" className="h-24 w-24 rounded-lg object-cover border border-stone-200 hover:border-stone-900" />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <div className="mt-5 border-t border-stone-200 pt-5">
+                <ReturnAdminForm
+                  key={ret.updatedAt.toISOString()}
+                  id={ret.id}
+                  status={ret.status}
+                  teamMessage={ret.teamMessage}
+                  adminNote={ret.adminNote}
+                  pickupDate={toDateInput(ret.pickupDate)}
+                  pickupSlot={ret.pickupSlot}
+                  driverId={ret.driverId}
+                  drivers={drivers}
+                  refundAmount={ret.refundAmount}
+                  orderTotal={formatPrice(order.total)}
+                />
+              </div>
+            </section>
+          )}
+
           <section className="rounded-2xl border border-stone-200 bg-white overflow-hidden">
             <h2 className="px-5 pt-5 font-medium text-stone-900">Items</h2>
             <ul className="mt-3 divide-y divide-stone-100">

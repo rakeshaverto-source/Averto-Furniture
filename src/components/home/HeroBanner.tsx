@@ -162,17 +162,18 @@ export default function HeroBanner() {
             {slide.subtitle}
           </m.p>
 
-          <div className="mt-8 flex items-center gap-4">
+          {/* Button labels never break; on the narrowest phones the second button moves below instead */}
+          <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
             <a
               href={slide.ctaHref}
-              className="inline-block px-8 py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-sm font-medium transition-colors"
+              className="inline-block whitespace-nowrap px-4 sm:px-8 py-3.5 rounded-sm bg-[#1A1A18] hover:bg-[#3b3732] text-white text-[13px] sm:text-sm font-medium transition-colors"
             >
               <span>{slide.ctaText}</span>
             </a>
 
             <a
               href="#contact"
-              className="inline-block px-6 py-3.5 rounded-sm border border-stone-300 hover:border-stone-400 bg-white/80 hover:bg-white text-stone-800 text-sm font-medium transition-colors"
+              className="inline-block whitespace-nowrap px-4 sm:px-6 py-3.5 rounded-sm border border-stone-300 hover:border-stone-400 bg-white/80 hover:bg-white text-stone-800 text-[13px] sm:text-sm font-medium transition-colors"
             >
               Talk to us
             </a>

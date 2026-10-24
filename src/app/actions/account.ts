@@ -152,7 +152,35 @@ export async function requestPasswordReset(_prev: AuthFormState, formData: FormD
 
 // Second step of "forgot password": the emailed code signs the customer in, then the new password is saved
 export async function resetPasswordWithCode(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const email = text(formData, "email").toLowerCase();
+  return saveWithCode(text(formData, "email").toLowerCase(), formData);
+}
+
+// Changing the password while logged in also needs a code from the account's email, so someone at
+// an unlocked device can't take the account over. The email comes from the session, never the form.
+export async function sendPasswordChangeCode(): Promise<AuthFormState> {
+  const customer = await getCustomer();
+  if (!customer) return { error: "Please log in again." };
+  const { email } = customer;
+  if (!mayResend(`reset:${email}`)) return { step: "verify", error: "Please wait a minute before asking for another code.", values: { email } };
+
+  const { data, error } = await supabaseAdmin().auth.admin.generateLink({ type: "recovery", email });
+  try {
+    if (error || !data.properties?.email_otp) throw error ?? new Error("No recovery code");
+    await sendMail({ to: email, ...codeEmail("reset", data.properties.email_otp) });
+  } catch (e) {
+    console.error(e);
+    return { error: "We couldn't send the email just now. Please try again in a few minutes." };
+  }
+  return { step: "verify", notice: `We emailed a code to ${email}. Enter it below with your new password.`, values: { email } };
+}
+
+export async function changePasswordWithCode(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const customer = await getCustomer();
+  if (!customer) return { error: "Please log in again." };
+  return saveWithCode(customer.email, formData);
+}
+
+async function saveWithCode(email: string, formData: FormData): Promise<AuthFormState> {
   const token = text(formData, "code").replace(/\s/g, "");
   const password = String(formData.get("password") ?? "");
   const values = { email };
@@ -173,17 +201,5 @@ export async function resetPasswordWithCode(_prev: AuthFormState, formData: Form
   }
   const { error: saveError } = await supabase.auth.updateUser({ password });
   if (saveError) return { step: "verify", error: "Please choose a different, stronger password.", values };
-  redirect("/account?password=1");
-}
-
-export async function updatePassword(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  if (!(await getCustomer())) return { error: "The link has expired. Please ask for a new one." };
-  const password = String(formData.get("password") ?? "");
-  if (password.length < 8 || password.length > 72) return { fieldErrors: { password: "Use 8 to 72 characters." } };
-  if (password !== String(formData.get("confirm") ?? "")) return { fieldErrors: { confirm: "The two passwords do not match." } };
-
-  const supabase = await createSupabaseServer();
-  const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: "Please choose a different, stronger password." };
   redirect("/account?password=1");
 }

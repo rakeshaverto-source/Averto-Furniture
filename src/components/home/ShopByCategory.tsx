@@ -5,92 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import TextReveal from "@/components/motion/TextReveal";
+import type { HomeCategory } from "@/lib/catalog";
 
-interface CategoryItem {
-  id: string;
-  name: string;
-  count: string;
-  image: string;
-  href: string;
-  // Optional zoom to crop away a built-in white frame/caption baked into the photo
-  zoomClass?: string;
-}
-
-const categories: CategoryItem[] = [
-  {
-    id: "sofas",
-    name: "Sofas",
-    count: "14 Designs",
-    image: "/hero/modular-sofa.jpg",
-    href: "/collections?category=sofas",
-  },
-  {
-    id: "seating",
-    name: "Seating",
-    count: "18 Designs",
-    image: "/hero/chair.jpg",
-    href: "/collections?category=seating",
-  },
-  {
-    id: "dining",
-    name: "Dining",
-    count: "10 Designs",
-    image: "/hero/dining-table.jpg",
-    href: "/collections?category=dining",
-  },
-  {
-    id: "beds",
-    name: "Beds",
-    count: "8 Designs",
-    image: "/hero/bed.jpg",
-    href: "/collections?category=beds",
-  },
-  {
-    id: "storage",
-    name: "Storage",
-    count: "12 Designs",
-    image: "/hero/fluted-credenza.jpg",
-    href: "/collections?category=storage",
-  },
-  {
-    id: "lighting",
-    name: "Lighting",
-    count: "16 Designs",
-    image: "/hero/pendant-chandelier.jpg",
-    href: "/collections?category=lighting",
-  },
-  {
-    id: "tables",
-    name: "Tables",
-    count: "15 Designs",
-    image: "/hero/card-coffee.jpg",
-    href: "/collections?category=tables",
-    zoomClass: "scale-[1.18]",
-  },
-  {
-    id: "consoles",
-    name: "Consoles",
-    count: "9 Designs",
-    image: "/hero/card-console.jpg",
-    href: "/collections?category=consoles",
-  },
-  {
-    id: "leather",
-    name: "Leather",
-    count: "11 Designs",
-    image: "/hero/saddle-chair.jpg",
-    href: "/collections?category=leather",
-  },
-  {
-    id: "atelier",
-    name: "Atelier",
-    count: "7 Designs",
-    image: "/hero/table.jpg",
-    href: "/collections",
-  },
-];
-
-export default function ShopByCategory() {
+// The categories come from the admin panel (Categories: photo + "Show on home page")
+export default function ShopByCategory({ categories }: { categories: HomeCategory[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -128,6 +46,8 @@ export default function ShopByCategory() {
       behavior: "smooth",
     });
   };
+
+  if (categories.length === 0) return null;
 
   return (
     <section className="w-full bg-[#FAF8F5] pt-8 pb-6 sm:pt-12 sm:pb-8 overflow-hidden">
@@ -168,18 +88,18 @@ export default function ShopByCategory() {
         {/* Scrollable Squircle Categories Track */}
         <div
           ref={scrollRef}
-          className="flex items-center gap-5 sm:gap-7 overflow-x-auto scrollbar-none scroll-smooth pb-4 snap-x snap-mandatory touch-pan-y"
+          className="flex items-center gap-5 sm:gap-7 overflow-x-auto scrollbar-none scroll-smooth pb-4 snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {categories.map((item) => (
             <Link
               key={item.id}
-              href={item.href}
+              href={`/collections?category=${encodeURIComponent(item.id)}`}
               className="group flex flex-col items-center shrink-0 snap-start text-center focus:outline-none"
             >
               {/* Ultra-Clean Squircle Photo Container */}
               <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden bg-[#ECE8E1] border border-stone-300 group-hover:border-stone-500 shadow-[0_4px_16px_rgba(0,0,0,0.04)] group-hover:shadow-[0_10px_25px_rgba(0,0,0,0.09)] transition-all duration-500">
-                <div className={`absolute inset-0 ${item.zoomClass ?? ""}`}>
+                <div className="absolute inset-0">
                   <Image
                     src={item.image}
                     alt={item.name}
@@ -198,7 +118,7 @@ export default function ShopByCategory() {
                   {item.name}
                 </span>
                 <span className="text-[11px] text-stone-600 font-medium mt-1 tracking-normal">
-                  {item.count}
+                  {item.designs} {item.designs === 1 ? "Design" : "Designs"}
                 </span>
               </div>
             </Link>

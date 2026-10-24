@@ -71,8 +71,11 @@ export default async function EditProductPage({
             specs: product.specs,
             priceInr: product.priceInr,
             originalPriceInr: product.originalPriceInr,
+            deliveryMinDays: product.deliveryMinDays,
+            deliveryMaxDays: product.deliveryMaxDays,
             sortOrder: product.sortOrder,
             isActive: product.isActive,
+            onHomePage: product.onHomePage,
             colors: product.colors.map((c) => ({ id: c.id, name: c.name, hex: c.hex, priceDelta: c.priceDelta })),
           }}
           photos={

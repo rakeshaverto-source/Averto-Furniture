@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   ExternalLink,
   FileText,
+  GalleryHorizontal,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -16,6 +17,7 @@ import {
   Tags,
   TicketPercent,
   Truck,
+  Undo2,
   Users,
   X,
 } from "lucide-react";
@@ -25,11 +27,13 @@ import { canUse, type AdminSection, type StaffRole } from "@/lib/admin-roles";
 const links: { href: string; label: string; icon: typeof Package; section: AdminSection }[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, section: "dashboard" },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, section: "orders" },
+  { href: "/admin/returns", label: "Returns", icon: Undo2, section: "orders" },
   { href: "/admin/drivers", label: "Drivers", icon: Truck, section: "drivers" },
   { href: "/admin/products", label: "Products", icon: Package, section: "products" },
   { href: "/admin/reviews", label: "Reviews", icon: Star, section: "reviews" },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, section: "coupons" },
   { href: "/admin/categories", label: "Categories", icon: Tags, section: "categories" },
+  { href: "/admin/showcase", label: "Home slider", icon: GalleryHorizontal, section: "products" },
   { href: "/admin/seo", label: "SEO", icon: Search, section: "seo" },
   { href: "/admin/blog", label: "Blog", icon: FileText, section: "blog" },
   { href: "/admin/team", label: "Team", icon: Users, section: "team" },
@@ -42,16 +46,22 @@ export default function AdminNav({
   roleName,
   pendingReviews,
   newOrders,
+  newReturns,
 }: {
   email: string;
   role: StaffRole;
   roleName: string;
   pendingReviews: number;
   newOrders: number;
+  newReturns: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const counts: Record<string, number> = { "/admin/orders": newOrders, "/admin/reviews": pendingReviews };
+  const counts: Record<string, number> = {
+    "/admin/orders": newOrders,
+    "/admin/returns": newReturns,
+    "/admin/reviews": pendingReviews,
+  };
 
   // Close the phone menu after moving to another page
   const [lastPath, setLastPath] = useState(pathname);

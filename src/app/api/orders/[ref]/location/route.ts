@@ -12,15 +12,29 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ref
 
   const order = await prisma.order.findFirst({
     where: admin ? { ref } : { ref, userId: customer.id },
-    select: { fulfillment: true, driverLat: true, driverLng: true, driverLocationAt: true },
+    select: {
+      fulfillment: true,
+      driverLat: true,
+      driverLng: true,
+      driverLocationAt: true,
+      pickupLat: true,
+      pickupLng: true,
+      dropLat: true,
+      dropLng: true,
+    },
   });
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
 
-  const live = order.fulfillment === "out_for_delivery" && order.driverLat !== null && order.driverLng !== null;
+  const out = order.fulfillment === "out_for_delivery";
+  const live = out && order.driverLat !== null && order.driverLng !== null;
+  const pin = (lat: number | null, lng: number | null) => (out && lat !== null && lng !== null ? { lat, lng } : null);
   return Response.json(
     {
       fulfillment: order.fulfillment,
       location: live ? { lat: order.driverLat, lng: order.driverLng, at: order.driverLocationAt } : null,
+      // Where the piece was collected and where it is going, for the route on the map
+      pickup: pin(order.pickupLat, order.pickupLng),
+      drop: pin(order.dropLat, order.dropLng),
     },
     { headers: { "Cache-Control": "no-store" } },
   );

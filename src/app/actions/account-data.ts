@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCustomer } from "@/lib/customer-auth";
+import { CONTACT_PREFS, getCustomer } from "@/lib/customer-auth";
+import { productStorage } from "@/lib/supabase/storage";
+import { endSession } from "@/lib/sessions";
 import { getProduct } from "@/lib/catalog";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -29,18 +31,52 @@ export async function updateProfile(_prev: FormResult, formData: FormData): Prom
   if (!(await getCustomer())) return { error: "Please log in again." };
   const name = text(formData, "name", 80);
   const phone = text(formData, "phone", 20);
+  const whatsapp = text(formData, "whatsapp", 20);
+  const birthday = text(formData, "birthday", 10);
+  const contactPref = text(formData, "contactPref", 10);
   const fieldErrors: Record<string, string> = {};
   if (name.length < 2) fieldErrors.name = "Please enter your full name.";
   if (!validPhone(phone)) fieldErrors.phone = "Please enter a valid phone number.";
+  if (whatsapp && !validPhone(whatsapp)) fieldErrors.whatsapp = "Please enter a valid WhatsApp number.";
+  if (birthday && !validBirthday(birthday)) fieldErrors.birthday = "Please enter a valid date of birth.";
+  if (!CONTACT_PREFS.some((p) => p === contactPref)) fieldErrors.contactPref = "Please choose how we should contact you.";
   if (Object.keys(fieldErrors).length) return { fieldErrors };
 
   const supabase = await createSupabaseServer();
-  const { error } = await supabase.auth.updateUser({ data: { full_name: name, phone } });
+  const { error } = await supabase.auth.updateUser({
+    data: { full_name: name, phone, whatsapp, birthday, contact_pref: contactPref },
+  });
   if (error) return { error: "Could not save. Please try again." };
   // The name lives inside the session token, so get a fresh one for the pages to show it
   await supabase.auth.refreshSession();
   refreshAccount();
   return { ok: "Saved." };
+}
+
+// A real past date, and someone at least 13 and under 120 years old
+function validBirthday(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return false;
+  const age = (Date.now() - date.getTime()) / (365.25 * 24 * 3600 * 1000);
+  return age >= 13 && age < 120;
+}
+
+// Ends one login from "Where you're logged in"; this device logs out with the usual button instead
+export async function removeLoginSession(formData: FormData) {
+  const customer = await getCustomer();
+  if (!customer) return;
+  const id = text(formData, "id", 40);
+  if (id === customer.sessionId) return;
+  await endSession(customer.id, id);
+  revalidatePath("/account/profile");
+}
+
+// Ends every session of this account, on this device and all others
+export async function signOutEverywhere() {
+  const supabase = await createSupabaseServer();
+  await supabase.auth.signOut({ scope: "global" });
+  redirect("/login?next=%2Faccount%2Fprofile");
 }
 
 // ─── Addresses ──────────────────────────────────────────────────────────────
@@ -252,6 +288,22 @@ export async function confirmBalancePayment(input: {
 
 // ─── Deleting the account ───────────────────────────────────────────────────
 
+// ─── Returns ────────────────────────────────────────────────────────────────
+
+// Withdraw a return request, only while the team hasn't acted on it yet
+export async function withdrawReturnRequest(formData: FormData) {
+  const customer = await getCustomer();
+  if (!customer) return;
+  const request = await prisma.returnRequest.findFirst({
+    where: { order: { ref: text(formData, "ref", 40), userId: customer.id }, status: "requested" },
+  });
+  if (!request) return;
+  await prisma.returnRequest.delete({ where: { id: request.id } });
+  if (request.photos.length) await productStorage().remove(request.photos);
+  refreshAccount();
+  revalidatePath("/admin", "layout");
+}
+
 export async function deleteAccount(_prev: FormResult, formData: FormData): Promise<FormResult> {
   const customer = await getCustomer();
   if (!customer) return { error: "Please log in again." };
@@ -268,6 +320,11 @@ export async function deleteAccount(_prev: FormResult, formData: FormData): Prom
     ]);
     const { error } = await supabaseAdmin().auth.admin.deleteUser(customer.id);
     if (error) throw error;
+    // The profile photo goes too; a leftover file is harmless, so this never blocks the delete
+    try {
+      const { data: photos } = await productStorage().list(`avatars/${customer.id}`);
+      if (photos?.length) await productStorage().remove(photos.map((f) => `avatars/${customer.id}/${f.name}`));
+    } catch {}
   } catch {
     return { error: "We could not delete your account right now. Please contact us and we will do it for you." };
   }

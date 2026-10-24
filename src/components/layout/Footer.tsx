@@ -15,13 +15,13 @@ export default function Footer() {
           {/* Brand Column with Original Warm Wood Logo */}
           <div className="lg:col-span-4 space-y-5">
             <Link href="/" className="inline-block group">
-              <div className="relative h-12 w-48 transition-transform group-hover:scale-[1.02] duration-300">
+              <div className="relative h-14 w-56 transition-transform group-hover:scale-[1.02] duration-300">
                 <Image
-                  src="/Logo.png"
-                  alt="Averto Furniture"
+                  src="/averto-logo.png"
+                  alt="Averto · Furniture · Interior · Styling"
                   fill
                   className="object-contain object-left"
-                  sizes="200px"
+                  sizes="224px"
                   priority
                 />
               </div>

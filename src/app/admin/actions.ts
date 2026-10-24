@@ -8,6 +8,7 @@ import { SECTION_HOME } from "@/lib/admin-roles";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isBucketPath, productStorage } from "@/lib/supabase/storage";
 import { slugify } from "@/lib/slug";
+import { MAX_DELIVERY_DAYS } from "@/data/delivery";
 
 // Shows admin edits on the shop straight away instead of after the 5-minute cache,
 // and re-renders the admin page the change was made on
@@ -95,6 +96,7 @@ export async function saveProduct(_prev: ProductFormState, formData: FormData): 
   const original = originalRaw ? Number(originalRaw) : null;
   const sortOrder = Number(text(formData, "sortOrder") || 0);
   const isActive = formData.get("isActive") === "on";
+  const onHomePage = formData.get("onHomePage") === "on";
   const colors = parseColors(text(formData, "colors"));
 
   const errors: Record<string, string> = {};
@@ -105,6 +107,17 @@ export async function saveProduct(_prev: ProductFormState, formData: FormData): 
   if (description.length < 10 || description.length > 3000) errors.description = "Description should be 10 to 3000 characters.";
   if (specs.length > 200) errors.specs = "Keep specs under 200 characters.";
   if (!Number.isInteger(price) || price < 1) errors.priceInr = "Enter the price in whole rupees.";
+  // Delivery time in days: both empty hides it; one filled means an exact number of days
+  const minRaw = text(formData, "deliveryMinDays");
+  const maxRaw = text(formData, "deliveryMaxDays");
+  const deliveryMinDays = minRaw ? Number(minRaw) : maxRaw ? Number(maxRaw) : null;
+  const deliveryMaxDays = maxRaw ? Number(maxRaw) : deliveryMinDays;
+  const validDays = (d: number | null) => d === null || (Number.isInteger(d) && d >= 1 && d <= MAX_DELIVERY_DAYS);
+  if (!validDays(deliveryMinDays) || !validDays(deliveryMaxDays)) {
+    errors.deliveryDays = `Use whole days from 1 to ${MAX_DELIVERY_DAYS}, or leave both empty.`;
+  } else if (deliveryMinDays !== null && deliveryMaxDays !== null && deliveryMinDays > deliveryMaxDays) {
+    errors.deliveryDays = "The first number should be the smaller one.";
+  }
   if (original !== null && (!Number.isInteger(original) || original <= price)) {
     errors.originalPriceInr = "The original price must be higher than the price, or left empty.";
   }
@@ -132,8 +145,11 @@ export async function saveProduct(_prev: ProductFormState, formData: FormData): 
     specs,
     priceInr: price,
     originalPriceInr: original,
+    deliveryMinDays,
+    deliveryMaxDays,
     sortOrder,
     isActive,
+    onHomePage,
   };
 
   try {
@@ -186,6 +202,54 @@ export async function setProductActive(formData: FormData) {
     where: { id: text(formData, "id") },
     data: { isActive: formData.get("active") === "true" },
   });
+  refreshShop();
+}
+
+// Add a product to, or take it off, "Selected pieces" on the home page straight from the list
+export async function setProductOnHomePage(formData: FormData) {
+  await requireAdmin("products");
+  await prisma.product.updateMany({
+    where: { id: text(formData, "id") },
+    data: { onHomePage: formData.get("onHomePage") === "true" },
+  });
+  refreshShop();
+}
+
+// Add a product to, or take it off, the home page's signature slider (Admin → Home slider)
+export async function setProductInShowcase(formData: FormData) {
+  await requireAdmin("products");
+  const id = text(formData, "id");
+  if (formData.get("inShowcase") === "true") {
+    // A new slide goes to the end
+    const last = await prisma.product.aggregate({ where: { inShowcase: true }, _max: { showcaseOrder: true } });
+    await prisma.product.updateMany({
+      where: { id, inShowcase: false },
+      data: { inShowcase: true, showcaseOrder: (last._max.showcaseOrder ?? 0) + 1 },
+    });
+  } else {
+    await prisma.product.updateMany({ where: { id }, data: { inShowcase: false } });
+  }
+  refreshShop();
+}
+
+// Swap a slide with the one before or after it
+export async function moveShowcasePiece(formData: FormData) {
+  await requireAdmin("products");
+  const id = text(formData, "id");
+  const step = formData.get("direction") === "up" ? -1 : 1;
+  const slides = await prisma.product.findMany({
+    where: { inShowcase: true },
+    orderBy: [{ showcaseOrder: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true },
+  });
+  const from = slides.findIndex((s) => s.id === id);
+  const to = from + step;
+  if (from < 0 || to < 0 || to >= slides.length) return;
+  [slides[from], slides[to]] = [slides[to], slides[from]];
+  // Renumber them all, so slides added before ordering existed get a place too
+  await prisma.$transaction(
+    slides.map((s, i) => prisma.product.update({ where: { id: s.id }, data: { showcaseOrder: i + 1 } })),
+  );
   refreshShop();
 }
 

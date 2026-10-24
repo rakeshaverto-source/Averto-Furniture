@@ -4,16 +4,16 @@ import HeroBanner from "@/components/home/HeroBanner";
 import FannedCardsSection from "@/components/home/FannedCardsSection";
 import ShopByCategory from "@/components/home/ShopByCategory";
 import ShopBySpaceSection from "@/components/home/ShopBySpaceSection";
-import TopSellingProducts, { type TopSellingPrices } from "@/components/home/TopSellingProducts";
+import TopSellingProducts, { type SelectedPiece } from "@/components/home/TopSellingProducts";
 import BespokeSectorsSection from "@/components/home/BespokeSectorsSection";
-import InteractiveShowcaseSlider from "@/components/home/InteractiveShowcaseSlider";
+import InteractiveShowcaseSlider, { type ShowcasePiece } from "@/components/home/InteractiveShowcaseSlider";
 import ClientReviewsSection from "@/components/home/ClientReviewsSection";
 import ClientLogosStrip from "@/components/home/ClientLogosStrip";
 import Footer from "@/components/layout/Footer";
 import StatsStrip from "@/components/home/StatsStrip";
 import ScrollProgress from "@/components/motion/ScrollProgress";
 import JsonLd from "@/components/seo/JsonLd";
-import { getProducts } from "@/lib/catalog";
+import { getCategories, getHomeCategories, getProducts } from "@/lib/catalog";
 import { STATIC_PAGES, getSeoSettings, pageMetadata } from "@/lib/seo";
 import { organizationLd, websiteLd } from "@/lib/structured-data";
 
@@ -26,9 +26,35 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   const { siteName } = await getSeoSettings();
-  const prices: TopSellingPrices = Object.fromEntries(
-    (await getProducts()).map((p) => [p.id, { priceInr: p.priceInr, originalPriceInr: p.originalPriceInr }]),
-  );
+  const [products, categories, homeCategories] = await Promise.all([getProducts(), getCategories(), getHomeCategories()]);
+  // The pieces ticked in admin; until any are, the first few in shop order
+  const ticked = products.filter((p) => p.onHomePage);
+  const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+  const selected: SelectedPiece[] = (ticked.length ? ticked : products.slice(0, 6)).map((p) => ({
+    id: p.id,
+    name: p.name,
+    category: categoryName.get(p.category) ?? p.category,
+    specs: p.specs,
+    image: p.image,
+    priceInr: p.priceInr,
+    originalPriceInr: p.originalPriceInr,
+  }));
+  // The pieces chosen under Admin → Home slider, in their order there; none hides the section
+  const showcase: ShowcasePiece[] = products
+    .filter((p) => p.inShowcase)
+    .sort((a, b) => (a.showcaseOrder ?? 0) - (b.showcaseOrder ?? 0))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      categoryId: p.category,
+      categoryName: categoryName.get(p.category) ?? p.category,
+      badge: p.badge,
+      description: p.description,
+      priceInr: p.priceInr,
+      image: p.image,
+      zoomClass: p.zoomClass,
+      detailImage: p.gallery?.[0]?.src,
+    }));
 
   return (
     <main className="min-h-screen bg-[#FAF8F5] flex flex-col">
@@ -47,13 +73,13 @@ export default async function Home() {
       <FannedCardsSection />
 
       {/* 4. Curated Collections - Shop By Category Carousel */}
-      <ShopByCategory />
+      <ShopByCategory categories={homeCategories} />
 
       {/* 5. Editorial 2x2 Showcase - Shop By Living Space */}
       <ShopBySpaceSection />
 
       {/* 6. Top Selling Products (Most requested luxury commissions) */}
-      <TopSellingProducts prices={prices} />
+      <TopSellingProducts products={selected} />
 
       {/* Animated trust counters (commissions, guarantee, ateliers, rating) */}
       <StatsStrip />
@@ -62,7 +88,7 @@ export default async function Home() {
       <BespokeSectorsSection />
 
       {/* 7. Signature Monolith Interactive Showcase Slider (Clean Leather & Slate Showcase) */}
-      <InteractiveShowcaseSlider />
+      <InteractiveShowcaseSlider pieces={showcase} />
 
       {/* Client names (wordmarks until logos are added to /public/clients) */}
       <ClientLogosStrip />

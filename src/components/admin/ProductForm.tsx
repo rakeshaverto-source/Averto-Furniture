@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { saveProduct, type ProductFormState } from "@/app/admin/actions";
 import { discountPercent, formatPrice } from "@/data/collections";
 import { slugify } from "@/lib/slug";
+import { DELIVERY_PRESETS, MAX_DELIVERY_DAYS, estimatedDeliveryRange, leadTimeLabel } from "@/data/delivery";
 import { inputClass, labelClass, primaryButton } from "./ui";
 import Step from "./Step";
 
@@ -18,8 +19,11 @@ export interface ProductFormValues {
   specs: string;
   priceInr: number;
   originalPriceInr: number | null;
+  deliveryMinDays: number | null;
+  deliveryMaxDays: number | null;
   sortOrder: number;
   isActive: boolean;
+  onHomePage: boolean;
   colors: { id?: string; name: string; hex: string; priceDelta: number }[];
 }
 
@@ -68,6 +72,8 @@ export default function ProductForm({
   const [price, setPrice] = useState(product ? String(product.priceInr) : "");
   const [original, setOriginal] = useState(product?.originalPriceInr ? String(product.originalPriceInr) : "");
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
+  const [minDays, setMinDays] = useState(product?.deliveryMinDays ? String(product.deliveryMinDays) : "");
+  const [maxDays, setMaxDays] = useState(product?.deliveryMaxDays ? String(product.deliveryMaxDays) : "");
   const [colors, setColors] = useState<ColorRow[]>(() =>
     (product?.colors ?? []).map((c) => ({ ...c, key: nextKey++, priceDelta: String(c.priceDelta) })),
   );
@@ -97,6 +103,15 @@ export default function ProductForm({
   const originalNum = Number(original) || 0;
   const off = discountPercent(originalNum || undefined, priceNum);
   const originalTooLow = originalNum > 0 && priceNum > 0 && originalNum <= priceNum;
+  // Delivery preview: one number filled means exactly that many days
+  const minNum = Number(minDays || maxDays) || 0;
+  const maxNum = Number(maxDays || minDays) || 0;
+  const daysOk = minNum >= 1 && maxNum >= minNum && maxNum <= MAX_DELIVERY_DAYS;
+  const setDays = (min: string, max: string) => {
+    setMinDays(min);
+    setMaxDays(max);
+    setDirty(true);
+  };
   const categoryName = categories.find((c) => c.id === categoryId)?.name;
   const shopStatus = !isActive ? "hidden" : !mainPhoto ? "nophoto" : "live";
   const moreOptionsError = !!(errors.slug || errors.sortOrder);
@@ -285,7 +300,7 @@ export default function ProductForm({
         </div>
       </Step>
 
-      <Step n={2} title="Price" help="In whole rupees, GST included.">
+      <Step n={2} title="Price and delivery" help="In whole rupees, GST included.">
         <div className="grid sm:grid-cols-2 gap-5">
           <div>
             <label htmlFor="p-price" className={labelClass}>
@@ -343,6 +358,83 @@ export default function ProductForm({
             .
           </p>
         )}
+
+        <div className="mt-6 border-t border-stone-200 pt-5">
+          <p className={labelClass}>
+            Delivery time <span className="font-normal text-stone-400">(optional)</span>
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {DELIVERY_PRESETS.map((p) => {
+              const on = minNum === p.min && maxNum === p.max;
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => setDays(String(p.min), String(p.max))}
+                  aria-pressed={on}
+                  className={`rounded-full border px-3 py-1.5 text-xs cursor-pointer ${
+                    on ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 text-stone-700 hover:border-stone-700"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-stone-700">
+            <span>From</span>
+            <input
+              form={FORM_ID}
+              name="deliveryMinDays"
+              type="number"
+              min={1}
+              max={MAX_DELIVERY_DAYS}
+              step={1}
+              inputMode="numeric"
+              value={minDays}
+              onChange={(e) => setDays(e.target.value, maxDays)}
+              aria-label="Fewest days to deliver"
+              className={`${inputClass} !w-20`}
+            />
+            <span>to</span>
+            <input
+              form={FORM_ID}
+              name="deliveryMaxDays"
+              type="number"
+              min={1}
+              max={MAX_DELIVERY_DAYS}
+              step={1}
+              inputMode="numeric"
+              value={maxDays}
+              onChange={(e) => setDays(minDays, e.target.value)}
+              aria-label="Most days to deliver"
+              className={`${inputClass} !w-20`}
+            />
+            <span>days after the order</span>
+            {(minDays || maxDays) && (
+              <button
+                type="button"
+                onClick={() => setDays("", "")}
+                className="text-xs text-stone-500 underline underline-offset-4 hover:text-stone-900 cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {errors.deliveryDays
+            ? fieldError("deliveryDays")
+            : daysOk
+              ? (
+                <p className="mt-3 rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-700">
+                  The product page shows{" "}
+                  <strong className="font-semibold text-stone-900" suppressHydrationWarning>
+                    Estimated delivery {estimatedDeliveryRange(minNum, maxNum)}
+                  </strong>{" "}
+                  for an order placed today ({leadTimeLabel(minNum, maxNum)}).
+                </p>
+              )
+              : hint("How long it usually takes to make and deliver. Leave empty to not show a date.")}
+        </div>
       </Step>
 
       <Step
@@ -484,6 +576,21 @@ export default function ProductForm({
           </span>
         </label>
 
+        <label className="mt-4 flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            form={FORM_ID}
+            name="onHomePage"
+            defaultChecked={product?.onHomePage ?? false}
+            className="mt-0.5 w-5 h-5 accent-[#E08A50] cursor-pointer"
+          />
+          <span className="text-sm text-stone-900">
+            Show on the home page
+            <span className="block text-xs text-stone-500">
+              In the &ldquo;Selected pieces&rdquo; section. &ldquo;Place in the shop&rdquo; below sets its order there too.
+            </span>
+          </span>
+        </label>
         <details className="mt-5 border-t border-stone-200 pt-4 group" open={moreOptionsError || undefined}>
           <summary className="cursor-pointer list-none text-sm text-stone-700 hover:text-stone-900">
             <span className="group-open:hidden">+ More options</span>

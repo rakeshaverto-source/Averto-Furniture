@@ -1,7 +1,13 @@
 "use client";
 
 import { startTransition, useActionState } from "react";
-import { requestPasswordReset, resetPasswordWithCode, updatePassword, type AuthFormState } from "@/app/actions/account";
+import {
+  changePasswordWithCode,
+  requestPasswordReset,
+  resetPasswordWithCode,
+  sendPasswordChangeCode,
+  type AuthFormState,
+} from "@/app/actions/account";
 import { CodeInput, ResendButton } from "./CodeStep";
 
 const inputClass =
@@ -63,19 +69,25 @@ export function ForgotPasswordForm() {
   );
 }
 
-// Second step: the emailed code plus the new password, saved together
+// Second step: the emailed code plus the new password, saved together. Logged in, the email is
+// the account's own, so there is no "different email" link.
 function ResetWithCode({
   email,
   sendState,
   resend,
   sending,
+  loggedIn = false,
 }: {
   email: string;
   sendState: AuthFormState;
   resend: () => void;
   sending: boolean;
+  loggedIn?: boolean;
 }) {
-  const [state, action, pending] = useActionState<AuthFormState, FormData>(resetPasswordWithCode, {});
+  const [state, action, pending] = useActionState<AuthFormState, FormData>(
+    loggedIn ? changePasswordWithCode : resetPasswordWithCode,
+    {},
+  );
   const errors = state.fieldErrors ?? {};
 
   return (
@@ -116,48 +128,34 @@ function ResetWithCode({
       </form>
       <div className="mt-6 flex items-center justify-between gap-4">
         <ResendButton onResend={resend} pending={sending} />
-        <a href="/forgot-password" className="text-sm text-stone-500 hover:text-stone-900">
-          Use a different email
-        </a>
+        {!loggedIn && (
+          <a href="/forgot-password" className="text-sm text-stone-500 hover:text-stone-900">
+            Use a different email
+          </a>
+        )}
       </div>
     </>
   );
 }
 
-export function NewPasswordForm() {
-  const [state, action, pending] = useActionState<AuthFormState, FormData>(updatePassword, {});
-  const errors = state.fieldErrors ?? {};
+// Logged in: first email a code to the account, then the code and the new password together
+export function ChangePasswordForm({ email }: { email: string }) {
+  const [state, action, pending] = useActionState<AuthFormState, FormData>(sendPasswordChangeCode, {});
+  const send = () => startTransition(() => action(new FormData()));
+
+  if (state.step === "verify") {
+    return <ResetWithCode email={email} sendState={state} resend={send} sending={pending} loggedIn />;
+  }
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        startTransition(() => action(formData));
-      }}
-      className="mt-10 space-y-5"
-    >
+    <div className="mt-10 space-y-5">
       <Messages state={state} />
-      {(["password", "confirm"] as const).map((name) => (
-        <div key={name}>
-          <label htmlFor={`np-${name}`} className="block text-sm font-medium text-stone-900 mb-2">
-            {name === "password" ? "New password" : "Confirm new password"}
-          </label>
-          <input
-            id={`np-${name}`}
-            name={name}
-            type="password"
-            autoComplete="new-password"
-            required
-            maxLength={72}
-            aria-invalid={!!errors[name]}
-            className={inputClass}
-          />
-          {errors[name] && <p className="mt-1.5 text-xs text-red-700">{errors[name]}</p>}
-        </div>
-      ))}
-      <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? "Saving…" : "Save new password"}
+      <p className="text-sm text-stone-600">
+        To keep your account safe, we&apos;ll email a code to <strong className="text-stone-900">{email}</strong>. Enter it
+        on the next screen with your new password.
+      </p>
+      <button type="button" onClick={send} disabled={pending} className={buttonClass}>
+        {pending ? "Sending…" : "Email me a code"}
       </button>
-    </form>
+    </div>
   );
 }

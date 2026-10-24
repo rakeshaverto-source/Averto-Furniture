@@ -19,8 +19,8 @@ export default function AccountNav({ counts }: { counts: Record<string, number> 
   const pathname = usePathname();
 
   return (
-    <nav aria-label="My account" className="lg:sticky lg:top-28">
-      <ul className="flex lg:flex-col gap-1.5 overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0 pb-1 lg:pb-0">
+    <nav aria-label="My account" className="min-w-0 lg:sticky lg:top-28">
+      <ul className="flex lg:flex-col gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:-mx-10 sm:px-10 lg:mx-0 lg:px-0 pb-1 lg:pb-0">
         {links.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/account" ? pathname === "/account" : pathname.startsWith(href) || (href === "/account/profile" && pathname === "/account/password");
@@ -30,7 +30,7 @@ export default function AccountNav({ counts }: { counts: Record<string, number> 
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-sm px-4 py-2.5 text-sm transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2 lg:gap-3 rounded-sm px-3.5 py-2 lg:px-4 lg:py-2.5 text-sm transition-colors whitespace-nowrap ${
                   active
                     ? "bg-[#111110] text-white"
                     : "bg-white lg:bg-transparent border border-stone-200 lg:border-transparent text-stone-700 hover:bg-white hover:text-stone-900"
@@ -55,7 +55,7 @@ export default function AccountNav({ counts }: { counts: Record<string, number> 
           <form action={signOutCustomer}>
             <button
               type="submit"
-              className="flex w-full items-center gap-3 rounded-sm px-4 py-2.5 text-sm text-stone-500 hover:text-stone-900 cursor-pointer whitespace-nowrap border border-stone-200 lg:border-transparent bg-white lg:bg-transparent"
+              className="flex w-full items-center gap-2 lg:gap-3 rounded-sm px-3.5 py-2 lg:px-4 lg:py-2.5 text-sm text-stone-500 hover:text-stone-900 cursor-pointer whitespace-nowrap border border-stone-200 lg:border-transparent bg-white lg:bg-transparent"
             >
               <LogOut className="w-[18px] h-[18px]" strokeWidth={1.6} />
               Log out

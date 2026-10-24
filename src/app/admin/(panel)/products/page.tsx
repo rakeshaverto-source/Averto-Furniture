@@ -1,15 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff, ExternalLink, Pencil, Star } from "lucide-react";
+import { Eye, EyeOff, ExternalLink, House, Pencil, Star } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 import { imageUrl } from "@/lib/catalog";
 import { discountPercent, formatPrice } from "@/data/collections";
 import { formatDate } from "@/lib/admin-format";
-import { setProductActive } from "@/app/admin/actions";
+import { setProductActive, setProductOnHomePage } from "@/app/admin/actions";
 import { inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
 
-type StatusFilter = "all" | "live" | "hidden" | "nophoto";
+type StatusFilter = "all" | "live" | "hidden" | "nophoto" | "home";
 type SortKey = "position" | "name" | "price-asc" | "price-desc" | "best" | "newest";
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
@@ -17,6 +17,7 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
   { value: "live", label: "On shop" },
   { value: "hidden", label: "Hidden" },
   { value: "nophoto", label: "No photo" },
+  { value: "home", label: "Home page" },
 ];
 
 const SORTS: { value: SortKey; label: string }[] = [
@@ -72,19 +73,20 @@ export default async function AdminProductsPage({
   }
   const rating = new Map(ratings.map((r) => [r.productId, { avg: r._avg.rating ?? 0, count: r._count._all }]));
 
-  const statusOf = (p: (typeof products)[number]): Exclude<StatusFilter, "all"> =>
+  const statusOf = (p: (typeof products)[number]): Exclude<StatusFilter, "all" | "home"> =>
     !p.isActive ? "hidden" : p._count.images === 0 ? "nophoto" : "live";
   const counts = {
     all: products.length,
     live: products.filter((p) => statusOf(p) === "live").length,
     hidden: products.filter((p) => statusOf(p) === "hidden").length,
     nophoto: products.filter((p) => statusOf(p) === "nophoto").length,
+    home: products.filter((p) => p.onHomePage).length,
   };
 
   const category = categories.some((c) => c.id === params.category) ? params.category : undefined;
   const list = products.filter(
     (p) =>
-      (status === "all" || statusOf(p) === status) &&
+      (status === "all" || (status === "home" ? p.onHomePage : statusOf(p) === status)) &&
       (!category || p.categoryId === category) &&
       (!q || p.name.toLowerCase().includes(q) || p.id.includes(q) || p.specs.toLowerCase().includes(q)),
   );
@@ -145,6 +147,14 @@ export default async function AdminProductsPage({
             <span>
               <strong className="font-medium text-stone-900">Hide from the shop:</strong> the eye button. Nothing is
               deleted, customers just stop seeing it. Press it again to bring it back.
+            </span>
+          </li>
+          <li className="flex gap-2.5">
+            <House className="w-4 h-4 mt-0.5 shrink-0 text-stone-500" aria-hidden />
+            <span>
+              <strong className="font-medium text-stone-900">Home page:</strong> the house button puts a product in the
+              &ldquo;Selected pieces&rdquo; section of the home page; press it again to take it off. The &ldquo;Home
+              page&rdquo; tab lists the ones there now. A hidden product or one without a photo is not shown.
             </span>
           </li>
           <li className="flex gap-2.5">
@@ -339,6 +349,11 @@ export default async function AdminProductsPage({
                     >
                       {state === "live" ? "On shop" : state === "nophoto" ? "No photo" : "Hidden"}
                     </span>
+                    {p.onHomePage && (
+                      <span className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-[#B5652B]">
+                        <House className="w-3 h-3" aria-hidden /> Home page
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
@@ -352,6 +367,21 @@ export default async function AdminProductsPage({
                           className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 cursor-pointer"
                         >
                           {p.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </form>
+                      <form action={setProductOnHomePage}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <input type="hidden" name="onHomePage" value={String(!p.onHomePage)} />
+                        <button
+                          type="submit"
+                          title={p.onHomePage ? "Take off the home page" : "Show on the home page"}
+                          aria-label={`${p.onHomePage ? "Take" : "Put"} ${p.name} ${p.onHomePage ? "off" : "on"} the home page`}
+                          aria-pressed={p.onHomePage}
+                          className={`h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-stone-100 cursor-pointer ${
+                            p.onHomePage ? "text-[#E08A50] hover:text-[#B5652B]" : "text-stone-400 hover:text-stone-900"
+                          }`}
+                        >
+                          <House className="w-4 h-4" fill={p.onHomePage ? "currentColor" : "none"} fillOpacity={0.2} />
                         </button>
                       </form>
                       {state === "live" && (

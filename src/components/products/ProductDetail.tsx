@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronUp, ShoppingBag, Truck } from "lucide-react";
+import { estimatedDeliveryRange, leadTimeLabel } from "@/data/delivery";
 import { m, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import {
   discountPercent,
@@ -200,12 +201,21 @@ export default function ProductDetail({
   } (${formatPrice(price)}).`;
   const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(enquiryText)}`;
 
+  // Delivery time set in admin, as dates for an order placed today
+  const leadDays =
+    product.deliveryMinDays && product.deliveryMaxDays
+      ? { min: product.deliveryMinDays, max: product.deliveryMaxDays }
+      : null;
+
   // Facts come from the product data and the site's existing delivery and guarantee wording
   const specs = [
     { label: "Category", value: category?.name ?? "" },
     ...(color ? [{ label: "Colour", value: color.name }] : []),
     { label: "Materials", value: product.specs.split(" · ").join(", ") },
-    { label: "Availability", value: "Made to order" },
+    {
+      label: "Availability",
+      value: leadDays ? `Made to order · delivered in ${leadTimeLabel(leadDays.min, leadDays.max)}` : "Made to order",
+    },
     { label: "Delivery", value: "White-glove delivery and installation across India" },
     { label: "Guarantee", value: "10-year structural guarantee" },
   ];
@@ -329,6 +339,20 @@ export default function ProductDetail({
                     })}
                   </div>
                 </div>
+              )}
+
+              {leadDays && (
+                <p className="mt-6 flex items-start gap-2.5 rounded-sm bg-[#F5F2EB] px-4 py-3 text-sm text-stone-700">
+                  <Truck className="mt-0.5 w-4 h-4 shrink-0 text-stone-900" aria-hidden />
+                  <span>
+                    Estimated delivery{" "}
+                    {/* Counted from today in the visitor's browser, so it can differ from the cached page by a day */}
+                    <strong className="font-semibold text-stone-900" suppressHydrationWarning>
+                      {estimatedDeliveryRange(leadDays.min, leadDays.max)}
+                    </strong>
+                    <span className="block text-xs text-stone-500">If you order today · usually {leadTimeLabel(leadDays.min, leadDays.max)} from order to delivery</span>
+                  </span>
+                </p>
               )}
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3">

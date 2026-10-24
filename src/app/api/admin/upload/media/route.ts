@@ -1,6 +1,6 @@
-// Receives one image for a blog post or a share preview from the admin panel. Like product photos
+// Receives one image for a blog post, a share preview or a category photo from the admin panel. Like product photos
 // it is turned upright, scaled down, converted to WebP and stripped of hidden data such as GPS
-// location, then stored under blog/ or seo/ in the "products" bucket (the one the site already serves).
+// location, then stored under blog/, seo/ or categories/ in the "products" bucket (the one the site already serves).
 import { randomUUID } from "crypto";
 import sharp from "sharp";
 import { getAdmin } from "@/lib/admin-auth";
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return fail(400, "The upload could not be read.");
   }
   const folder = String(form.get("folder") ?? "");
-  if (folder !== "blog" && folder !== "seo") return fail(400, "Unknown upload type.");
+  if (folder !== "blog" && folder !== "seo" && folder !== "categories") return fail(400, "Unknown upload type.");
   if (!canUse(admin.role, folder)) return fail(403, "Your role can't upload these images.");
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) return fail(400, "Choose an image to upload.");
