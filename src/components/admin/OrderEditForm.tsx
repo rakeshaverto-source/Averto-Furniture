@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useState } from "react";
 import { updateOrderDetails, type FormState } from "@/app/admin/store-actions";
 import { formatPrice } from "@/data/collections";
+import { gstOn } from "@/data/store";
 import { inputClass, labelClass, primaryButton } from "./ui";
 
 interface EditItem {
@@ -29,6 +30,7 @@ export default function OrderEditForm({
     state: string;
     pincode: string;
     discount: number;
+    gstPercent: number; // 0 for orders placed before GST was added
     depositPercent: number;
     advancePaid: boolean;
     deposit: number;
@@ -43,7 +45,8 @@ export default function OrderEditForm({
     setLines((list) => list.map((l) => (l.id === id ? { ...l, [key]: Math.max(0, Math.floor(Number(value) || 0)) } : l)));
 
   const subtotal = lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
-  const total = Math.max(0, subtotal - discount);
+  const gst = gstOn(Math.max(0, subtotal - discount), order.gstPercent);
+  const total = Math.max(0, subtotal - discount) + gst;
   const deposit = order.advancePaid ? order.deposit : Math.round((total * order.depositPercent) / 100);
 
   const field = (name: keyof typeof order, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
@@ -143,6 +146,12 @@ export default function OrderEditForm({
             <dt>Subtotal</dt>
             <dd className="tabular-nums">{formatPrice(subtotal)}</dd>
           </div>
+          {order.gstPercent > 0 && (
+            <div className="flex justify-between">
+              <dt>GST ({order.gstPercent}%)</dt>
+              <dd className="tabular-nums">{formatPrice(gst)}</dd>
+            </div>
+          )}
           <div className="flex justify-between font-semibold text-stone-900">
             <dt>New total</dt>
             <dd className="tabular-nums">{formatPrice(total)}</dd>

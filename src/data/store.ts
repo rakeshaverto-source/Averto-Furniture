@@ -62,3 +62,9 @@ export function priceLine(
     originalUnit: product.originalPriceInr ? product.originalPriceInr + delta : undefined,
   };
 }
+
+// GST added on top of the product prices at checkout, on the amount after any coupon.
+// Orders keep the rate they were placed with, so changing this doesn't alter past orders.
+export const GST_PERCENT = 18;
+
+export const gstOn = (amount: number, percent = GST_PERCENT) => Math.round((amount * percent) / 100);

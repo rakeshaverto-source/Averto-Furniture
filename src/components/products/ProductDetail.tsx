@@ -15,7 +15,7 @@ import {
   type ProductImage,
 } from "@/data/collections";
 import { getRatingSummary, type ProductReview } from "@/data/reviews";
-import { COD_ADVANCE_PERCENT, depositFor } from "@/data/store";
+import { COD_ADVANCE_PERCENT, depositFor, gstOn } from "@/data/store";
 import { useCart } from "@/components/cart/CartProvider";
 import PriceTag from "./PriceTag";
 import WishlistButton from "@/components/account/WishlistButton";
@@ -301,7 +301,7 @@ export default function ProductDetail({
                 <p className="mt-1 text-sm text-emerald-700">You save {formatPrice(originalPrice - price)}</p>
               )}
               <p className="mt-1 text-sm text-stone-500">
-                Made to order. Tell us your size and finish for a final quote.
+                + GST, added in the cart. Made to order; tell us your size and finish for a final quote.
               </p>
 
               <p className="mt-6 text-base text-stone-700 leading-relaxed">{product.description}</p>
@@ -376,7 +376,7 @@ export default function ProductDetail({
                 <WishlistButton productId={product.id} className="h-12 sm:w-12 shrink-0" />
               </div>
               <p className="mt-3 text-xs text-stone-500">
-                Order from {formatPrice(depositFor(price, "cod"))} online today. Cash on Delivery available with a{" "}
+                Order from {formatPrice(depositFor(price + gstOn(price), "cod"))} online today. Cash on Delivery available with a{" "}
                 {COD_ADVANCE_PERCENT}% advance.
               </p>
 

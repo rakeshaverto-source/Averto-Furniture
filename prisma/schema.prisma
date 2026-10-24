@@ -122,6 +122,7 @@ model Review {
   isSample  Boolean      @default(false)
   userId    String? // the account that wrote it, when written from "My account"
   verified  Boolean      @default(false) // the writer bought and received this product
+  offline   Boolean      @default(false) // added by the team for a customer who bought from us in person
   createdAt DateTime     @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -206,6 +207,8 @@ model Order {
   subtotal       Int
   couponCode     String? // copied, not linked, so deleting a coupon keeps old orders intact
   discount       Int           @default(0)
+  gst            Int           @default(0) // GST added on top, on subtotal − discount (0 on orders from before GST was added)
+  gstPercent     Int           @default(0)
   total          Int
   deposit        Int
   depositPercent Int

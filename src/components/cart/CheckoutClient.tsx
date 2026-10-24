@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/data/collections";
-import { PAYMENT_METHODS, depositFor, percentFor, type PaymentMethod } from "@/data/store";
+import { GST_PERCENT, PAYMENT_METHODS, depositFor, percentFor, type PaymentMethod } from "@/data/store";
 import {
   confirmPayment,
   createOrder,
@@ -67,7 +67,7 @@ export default function CheckoutClient({
   prefill: Partial<CheckoutCustomer> & { email: string };
   addresses?: SavedAddress[];
 }) {
-  const { lines, subtotal, savings, discount, total, coupon, syncing, clear } = useCart();
+  const { lines, subtotal, savings, discount, gst, total, coupon, syncing, clear } = useCart();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("advance");
   // Shown here only; the server works out the same amount again from its own prices
   const payNow = depositFor(total, paymentMethod);
@@ -484,18 +484,20 @@ export default function CheckoutClient({
               <dd>{formatPrice(savings)}</dd>
             </div>
           )}
+          <div className="flex justify-between text-stone-600">
+            <dt>Subtotal</dt>
+            <dd className="text-stone-900">{formatPrice(subtotal)}</dd>
+          </div>
           {discount > 0 && (
-            <>
-              <div className="flex justify-between text-stone-600">
-                <dt>Subtotal</dt>
-                <dd className="text-stone-900">{formatPrice(subtotal)}</dd>
-              </div>
-              <div className="flex justify-between text-emerald-800">
-                <dt>Coupon discount</dt>
-                <dd>&minus;{formatPrice(discount)}</dd>
-              </div>
-            </>
+            <div className="flex justify-between text-emerald-800">
+              <dt>Coupon discount</dt>
+              <dd>&minus;{formatPrice(discount)}</dd>
+            </div>
           )}
+          <div className="flex justify-between text-stone-600">
+            <dt>GST ({GST_PERCENT}%)</dt>
+            <dd className="text-stone-900">{formatPrice(gst)}</dd>
+          </div>
           <div className="flex justify-between text-stone-600">
             <dt>Order total</dt>
             <dd className="text-stone-900">{formatPrice(total)}</dd>

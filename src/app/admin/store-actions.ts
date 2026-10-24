@@ -14,6 +14,7 @@ import { pinOrderDrop } from "@/lib/geo";
 import { returnUpdateEmail, sendMail } from "@/lib/mailer";
 import { SITE_URL } from "@/lib/seo";
 import { RETURN_STATUSES } from "@/data/returns";
+import { gstOn } from "@/data/store";
 import type { FulfillmentStatus, ReturnStatus } from "@/generated/prisma/client";
 
 const text = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
@@ -232,7 +233,9 @@ export async function updateOrderDetails(_prev: FormState, formData: FormData): 
   const subtotal = kept.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
   const discount = Math.round(Number(formData.get("discount")) || 0);
   if (discount < 0 || discount > subtotal) return { error: "The discount can't be more than the subtotal." };
-  const total = subtotal - discount;
+  // GST at the rate the order was placed with (0 for orders from before GST was added)
+  const gst = gstOn(subtotal - discount, order.gstPercent);
+  const total = subtotal - discount + gst;
   const advancePaid = order.status === "deposit_paid";
   const deposit = advancePaid ? order.deposit : Math.round((total * order.depositPercent) / 100);
   // More to pay than before means the balance is no longer settled
@@ -252,6 +255,7 @@ export async function updateOrderDetails(_prev: FormState, formData: FormData): 
         ...customer,
         subtotal,
         discount,
+        gst,
         total,
         deposit,
         balancePaid: stillSettled,
@@ -280,6 +284,40 @@ export async function setReviewStatus(formData: FormData) {
   await prisma.review.updateMany({ where: { id: text(formData, "id") }, data: { status } });
   updateTag("reviews");
   refreshAdmin();
+}
+
+// A review from a customer who bought from us in person (before the website, or at the studio).
+// Goes straight on the shop and into the reviews popup, marked "Bought in store".
+export async function addOfflineReview(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin("reviews");
+  if (formData.get("genuine") !== "on") return { error: "Tick the box to confirm this is a real customer's review." };
+  const productId = text(formData, "productId");
+  const name = text(formData, "name").slice(0, 60);
+  const location = text(formData, "location").slice(0, 60);
+  const rating = Number(text(formData, "rating"));
+  const title = text(formData, "title").slice(0, 100);
+  const body = text(formData, "text").slice(0, 1500);
+  const date = text(formData, "date");
+
+  if (!(await prisma.product.findUnique({ where: { id: productId }, select: { id: true } }))) return { error: "Choose the product they bought." };
+  if (name.length < 2) return { error: "Enter the customer's name." };
+  if (location.length < 2) return { error: "Enter their city." };
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { error: "Choose a rating from 1 to 5." };
+  if (title.length < 2) return { error: "Add a short title." };
+  if (body.length < 10) return { error: "The review should be at least 10 characters." };
+  let createdAt: Date | undefined;
+  if (date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Enter a valid date." };
+    createdAt = new Date(`${date}T12:00:00Z`);
+    if (createdAt.getTime() > Date.now()) return { error: "The date can't be in the future." };
+  }
+
+  await prisma.review.create({
+    data: { productId, name, location, rating, title, text: body, status: "approved", verified: true, offline: true, createdAt },
+  });
+  updateTag("reviews");
+  refreshAdmin();
+  return { ok: `${name}'s review is on the shop.` };
 }
 
 export async function deleteReview(formData: FormData) {

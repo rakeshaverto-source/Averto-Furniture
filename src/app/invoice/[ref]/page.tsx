@@ -99,6 +99,18 @@ export default async function InvoicePage({ params }: { params: Promise<{ ref: s
               <dd className="tabular-nums">− {formatPrice(order.discount)}</dd>
             </div>
           )}
+          {order.gst > 0 && (
+            <>
+              <div className="flex justify-between">
+                <dt className="text-stone-600">Taxable value</dt>
+                <dd className="tabular-nums">{formatPrice(order.subtotal - order.discount)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-stone-600">GST ({order.gstPercent}%)</dt>
+                <dd className="tabular-nums">{formatPrice(order.gst)}</dd>
+              </div>
+            </>
+          )}
           <div className="flex justify-between border-t border-stone-300 pt-2 text-base font-semibold text-stone-900">
             <dt>Total</dt>
             <dd className="tabular-nums">{formatPrice(order.total)}</dd>
@@ -118,7 +130,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ ref: s
         </dl>
 
         <footer className="mt-10 border-t border-stone-200 pt-4 text-xs text-stone-500">
-          {BUSINESS.pricesIncludeGst ? "All prices include GST. " : ""}This is a computer-generated invoice and needs no
+          {/* Orders from before GST was added on top had it inside the prices */}
+          {order.gst > 0 ? "" : BUSINESS.pricesIncludeGst ? "All prices include GST. " : ""}This is a computer-generated invoice and needs no
           signature.
         </footer>
       </article>

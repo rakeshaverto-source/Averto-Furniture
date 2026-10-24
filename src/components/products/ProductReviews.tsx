@@ -89,7 +89,7 @@ export default function ProductReviews({
                     {review.location && <> &middot; {review.location}</>}
                     {review.verified && (
                       <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                        <BadgeCheck className="w-3.5 h-3.5" /> Verified buyer
+                        <BadgeCheck className="w-3.5 h-3.5" /> {review.offline ? "Bought in store" : "Verified buyer"}
                       </span>
                     )}
                   </p>

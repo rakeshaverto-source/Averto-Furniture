@@ -6,14 +6,14 @@ import Link from "next/link";
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { formatPrice } from "@/data/collections";
-import { COD_ADVANCE_PERCENT, DEPOSIT_PERCENT, MAX_QTY_PER_LINE } from "@/data/store";
+import { COD_ADVANCE_PERCENT, DEPOSIT_PERCENT, GST_PERCENT, MAX_QTY_PER_LINE } from "@/data/store";
 import { useCart } from "./CartProvider";
 import CouponBox from "./CouponBox";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function CartDrawer() {
-  const { lines, subtotal, savings, discount, total, syncing, drawerOpen, closeDrawer, setQty, remove } = useCart();
+  const { lines, subtotal, savings, discount, gst, total, syncing, drawerOpen, closeDrawer, setQty, remove } = useCart();
 
   // Esc closes; page scroll is locked while the drawer is open
   useEffect(() => {
@@ -169,6 +169,10 @@ export default function CartDrawer() {
                       <span>&minus;{formatPrice(discount)}</span>
                     </div>
                   )}
+                  <div className="mt-1.5 flex items-center justify-between text-sm text-stone-600">
+                    <span>GST ({GST_PERCENT}%)</span>
+                    <span className="text-stone-900">{formatPrice(gst)}</span>
+                  </div>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-sm font-medium text-stone-900">Order total</span>
                     <span className="font-serif text-2xl text-stone-950">{formatPrice(total)}</span>

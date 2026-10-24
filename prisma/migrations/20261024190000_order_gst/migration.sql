@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "orders" ADD COLUMN     "gst" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "gstPercent" INTEGER NOT NULL DEFAULT 0;
+

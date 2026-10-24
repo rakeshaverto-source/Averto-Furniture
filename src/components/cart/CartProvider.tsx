@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { CollectionProduct, ProductColor } from "@/data/collections";
-import { depositFor, MAX_QTY_PER_LINE } from "@/data/store";
+import { depositFor, gstOn, MAX_QTY_PER_LINE } from "@/data/store";
 import type { PublicCoupon } from "@/data/coupons";
 import { quoteCart, type CartQuote } from "@/app/actions/cart";
 import { parseCart, readCoupon, readRaw, sameLine, subscribe, writeCart, writeCoupon } from "@/lib/cart-store";
@@ -26,6 +26,7 @@ interface CartContextValue {
   coupon: PublicCoupon | null;
   couponNotice: string;
   discount: number;
+  gst: number; // added on top of the prices
   total: number;
   deposit: number;
   // true while the latest cart change is still being priced by the server
@@ -110,7 +111,9 @@ export default function CartProvider({ children }: { children: React.ReactNode }
   const discount = data?.discount ?? 0;
   const couponNotice =
     storedCoupon && data?.couponError ? `${storedCoupon} no longer applies. ${data.couponError}` : "";
-  const total = subtotal - discount;
+  // Same rule as checkout: GST on top, on the amount after the coupon
+  const gst = gstOn(subtotal - discount);
+  const total = subtotal - discount + gst;
   // Until the first prices arrive, count straight from storage so the cart badge never flickers to 0
   const count = (lines.length ? lines : stored).reduce((sum, l) => sum + l.qty, 0);
 
@@ -163,6 +166,7 @@ export default function CartProvider({ children }: { children: React.ReactNode }
     coupon,
     couponNotice,
     discount,
+    gst,
     total,
     deposit: depositFor(total),
     syncing,

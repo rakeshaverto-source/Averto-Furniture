@@ -4,6 +4,8 @@ import "./globals.css";
 import MotionProvider from "@/components/motion/MotionProvider";
 import CartProvider from "@/components/cart/CartProvider";
 import { rootMetadata } from "@/lib/seo";
+import { getPopupReviews } from "@/lib/catalog";
+import ReviewPopup from "@/components/home/ReviewPopup";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -23,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return rootMetadata();
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -41,6 +43,8 @@ export default function RootLayout({
       >
         <MotionProvider>
           <CartProvider>{children}</CartProvider>
+          {/* Real customer reviews in the bottom-left corner; nothing shows until there are some */}
+          <ReviewPopup reviews={await getPopupReviews().catch(() => [])} />
         </MotionProvider>
       </body>
     </html>

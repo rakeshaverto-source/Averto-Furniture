@@ -6,6 +6,7 @@ export const BUSINESS = {
   gstin: "PLACEHOLDER GSTIN",
   email: "concierge@averto.in",
   phone: "+91 99999 99999",
-  // Whether the prices on the site already include GST
+  // Whether prices included GST on orders placed before GST was added on top at checkout (those have gst = 0).
+  // New orders add GST_PERCENT from src/data/store.ts on top.
   pricesIncludeGst: true,
 };

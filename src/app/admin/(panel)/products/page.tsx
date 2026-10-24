@@ -7,7 +7,8 @@ import { imageUrl } from "@/lib/catalog";
 import { discountPercent, formatPrice } from "@/data/collections";
 import { formatDate } from "@/lib/admin-format";
 import { setProductActive, setProductOnHomePage } from "@/app/admin/actions";
-import { inputClass, primaryButton, secondaryButton } from "@/components/admin/ui";
+import { primaryButton } from "@/components/admin/ui";
+import ProductFilters from "@/components/admin/ProductFilters";
 
 type StatusFilter = "all" | "live" | "hidden" | "nophoto" | "home";
 type SortKey = "position" | "name" | "price-asc" | "price-desc" | "best" | "newest";
@@ -228,28 +229,14 @@ export default async function AdminProductsPage({
             );
           })}
         </nav>
-        <form className="flex flex-wrap gap-2 w-full lg:w-auto lg:ml-auto" role="search">
-          {status !== "all" && <input type="hidden" name="status" value={status} />}
-          <input name="q" defaultValue={q} placeholder="Search name or specs" aria-label="Search products" className={`${inputClass} flex-1 lg:w-52`} />
-          <select name="category" defaultValue={category ?? ""} aria-label="Category" className={`${inputClass} w-auto`}>
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select name="sort" defaultValue={sort} aria-label="Sort" className={`${inputClass} w-auto`}>
-            {SORTS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className={secondaryButton}>
-            Apply
-          </button>
-        </form>
+        <ProductFilters
+          q={(params.q ?? "").trim().slice(0, 60)}
+          category={category ?? ""}
+          sort={sort}
+          status={status}
+          categories={categories}
+          sorts={SORTS}
+        />
       </div>
 
       <div className="mt-5 rounded-2xl border border-stone-200 bg-white overflow-x-auto">

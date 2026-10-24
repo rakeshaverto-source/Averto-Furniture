@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { saveProduct, type ProductFormState } from "@/app/admin/actions";
 import { discountPercent, formatPrice } from "@/data/collections";
 import { slugify } from "@/lib/slug";
+import { GST_PERCENT } from "@/data/store";
 import { DELIVERY_PRESETS, MAX_DELIVERY_DAYS, estimatedDeliveryRange, leadTimeLabel } from "@/data/delivery";
 import { inputClass, labelClass, primaryButton } from "./ui";
 import Step from "./Step";
@@ -300,7 +301,7 @@ export default function ProductForm({
         </div>
       </Step>
 
-      <Step n={2} title="Price and delivery" help="In whole rupees, GST included.">
+      <Step n={2} title="Price and delivery" help={`In whole rupees, before GST. ${GST_PERCENT}% GST is added on top at checkout.`}>
         <div className="grid sm:grid-cols-2 gap-5">
           <div>
             <label htmlFor="p-price" className={labelClass}>

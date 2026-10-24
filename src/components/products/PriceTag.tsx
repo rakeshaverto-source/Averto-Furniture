@@ -33,6 +33,8 @@ export default function PriceTag({
           {showBadge && <span className="text-xs font-semibold text-emerald-700">{percent}% off</span>}
         </>
       )}
+      {/* Only that GST is extra; the amount is shown in the cart */}
+      <span className="text-xs font-normal text-stone-500 whitespace-nowrap">+ GST</span>
     </span>
   );
 }

@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/admin-format";
 import { deleteReview, setReviewStatus } from "@/app/admin/store-actions";
 import { primaryButton, secondaryButton } from "@/components/admin/ui";
 import ConfirmButton from "@/components/admin/ConfirmButton";
+import OfflineReviewForm from "@/components/admin/OfflineReviewForm";
 import type { ReviewStatus } from "@/generated/prisma/client";
 
 const TABS: { value: ReviewStatus; label: string }[] = [
@@ -18,7 +19,7 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
   const { status: requested } = await searchParams;
   const status = TABS.find((t) => t.value === requested)?.value ?? "pending";
 
-  const [reviews, counts, samples] = await Promise.all([
+  const [reviews, counts, samples, products] = await Promise.all([
     prisma.review.findMany({
       where: { status },
       orderBy: { createdAt: "desc" },
@@ -27,6 +28,7 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
     }),
     prisma.review.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.review.count({ where: { isSample: true } }),
+    prisma.product.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
   ]);
   const countOf = (value: ReviewStatus) => counts.find((c) => c.status === value)?._count._all ?? 0;
 
@@ -41,6 +43,16 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
           from real customers; delete them before launch.
         </p>
       )}
+
+      <details className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 group">
+        <summary className="cursor-pointer list-none font-medium text-stone-900 flex items-center justify-between gap-3">
+          Add a review from a store customer
+          <span className="text-sm font-normal text-stone-500 group-open:hidden">For customers who bought in person</span>
+        </summary>
+        <div className="mt-5">
+          <OfflineReviewForm products={products} />
+        </div>
+      </details>
 
       <nav aria-label="Filter reviews" className="mt-6 flex flex-wrap gap-1.5 text-sm">
         {TABS.map((tab) => {
@@ -85,6 +97,9 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
               {r.email ? ` · ${r.email}` : ""}
               {r.verified && (
                 <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800">✓ Verified buyer</span>
+              )}
+              {r.offline && (
+                <span className="ml-2 rounded-full bg-sky-50 px-2 py-0.5 font-medium text-sky-800">Bought in store</span>
               )}
               {r.isSample && (
                 <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-900">Sample</span>

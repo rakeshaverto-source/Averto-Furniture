@@ -44,6 +44,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
   const rows: [string, string][] = [
     ["Subtotal", formatPrice(order.subtotal)],
     ...(order.discount > 0 ? [[`Coupon ${order.couponCode ?? ""}`.trim(), `− ${formatPrice(order.discount)}`] as [string, string]] : []),
+    ...(order.gst > 0 ? [[`GST (${order.gstPercent}%)`, formatPrice(order.gst)] as [string, string]] : []),
     ["Total", formatPrice(order.total)],
     [`Advance (${order.depositPercent}%)`, formatPrice(order.deposit)],
   ];
@@ -173,6 +174,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                   state: order.state,
                   pincode: order.pincode,
                   discount: order.discount,
+                  gstPercent: order.gstPercent,
                   depositPercent: order.depositPercent,
                   advancePaid: order.status === "deposit_paid",
                   deposit: order.deposit,

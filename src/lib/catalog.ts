@@ -137,10 +137,48 @@ export const getReviews = unstable_cache(
       date: monthYear.format(r.createdAt),
       verified: r.verified,
       isSample: r.isSample,
+      offline: r.offline,
     }));
   },
   ["reviews"],
   { revalidate: CACHE_SECONDS, tags: ["reviews"] },
+);
+
+export interface PopupReview {
+  id: string;
+  name: string;
+  location: string;
+  rating: number;
+  text: string;
+  productId: string;
+  productName: string;
+  offline: boolean;
+}
+
+// The reviews popup: real customers only (never the invented sample reviews), 4 stars and up,
+// on products that are on the shop
+export const getPopupReviews = unstable_cache(
+  async (): Promise<PopupReview[]> => {
+    const rows = await prisma.review.findMany({
+      where: { status: "approved", isSample: false, rating: { gte: 4 }, product: { isActive: true } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: { product: { select: { name: true } } },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      // first name and initial only, e.g. "Gurpreet S."
+      name: r.name.trim().split(/\s+/).slice(0, 2).map((w, i) => (i === 0 ? w : `${w[0]}.`)).join(" "),
+      location: r.location,
+      rating: r.rating,
+      text: r.text.length > 120 ? `${r.text.slice(0, 117).trimEnd()}…` : r.text,
+      productId: r.productId,
+      productName: r.product.name,
+      offline: r.offline,
+    }));
+  },
+  ["popup-reviews"],
+  { revalidate: CACHE_SECONDS, tags: ["reviews", "catalog"] },
 );
 
 // Not cached: switching a coupon off or letting it expire must take effect straight away.

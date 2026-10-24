@@ -180,11 +180,17 @@ export default async function MyOrderPage({ params }: { params: Promise<{ ref: s
                 <dd className="tabular-nums">− {formatPrice(order.discount)}</dd>
               </div>
             )}
+            {order.gst > 0 && (
+              <div className="flex justify-between text-stone-600">
+                <dt>GST ({order.gstPercent}%)</dt>
+                <dd className="tabular-nums">{formatPrice(order.gst)}</dd>
+              </div>
+            )}
             <div className="flex justify-between pt-1.5 font-semibold text-stone-900">
               <dt>Total</dt>
               <dd className="tabular-nums">{formatPrice(order.total)}</dd>
             </div>
-            {BUSINESS.pricesIncludeGst && <p className="text-xs text-stone-500">Prices include GST.</p>}
+            {order.gst === 0 && BUSINESS.pricesIncludeGst && <p className="text-xs text-stone-500">Prices include GST.</p>}
           </dl>
         </section>
 

@@ -11,6 +11,7 @@ export interface ProductReview {
   date: string;
   verified?: boolean; // written from "My account" by someone who received this product
   isSample?: boolean; // invented preview review: never counted in search-engine ratings
+  offline?: boolean; // a customer who bought in person, added by the team
 }
 
 export function getRatingSummary(reviews: ProductReview[]) {

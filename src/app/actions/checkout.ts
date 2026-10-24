@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
-import { depositFor, isPaymentMethod, percentFor, type PaymentMethod } from "@/data/store";
+import { GST_PERCENT, depositFor, gstOn, isPaymentMethod, percentFor, type PaymentMethod } from "@/data/store";
 import { prisma } from "@/lib/prisma";
 import { MAX_CART_LINES, priceCoupon, priceItems, subtotalOf } from "@/lib/pricing";
 import { CouponLimitReached, cancelUnpaidAttempts, rememberAddress, saveOrder } from "@/lib/orders";
@@ -121,7 +121,9 @@ export async function createOrder(
     couponCode = result.coupon.code;
     appliedCoupon = result.coupon;
   }
-  const total = subtotal - discount;
+  // GST is added on top of the prices, on the amount after the coupon
+  const gst = gstOn(subtotal - discount);
+  const total = subtotal - discount + gst;
   // The amount paid online now depends on the payment choice, worked out here, never taken from the browser
   const deposit = depositFor(total, paymentMethod);
   const ref = `AV-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -142,6 +144,8 @@ export async function createOrder(
     subtotal,
     couponCode,
     discount,
+    gst,
+    gstPercent: GST_PERCENT,
     total,
     deposit,
     depositPercent: percentFor(paymentMethod),
